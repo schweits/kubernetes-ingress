@@ -1,5 +1,6 @@
 env:
   - CGO_ENABLED=0
+
 builds:
   - id: kubernetes-ingress
     goos:
@@ -40,14 +41,88 @@ builds:
     binary: nginx-ingress
     tags:
       - aws
+  - id: aws-nap-dos
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -trimpath
+    gcflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    asmflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.productCode={{.Env.AWS_NAP_DOS_PRODUCT_CODE}} -X main.pubKeyString={{.Env.AWS_NAP_DOS_PUB_KEY}}
+    main: ./cmd/nginx-ingress/
+    binary: nginx-ingress
+    tags:
+      - aws
+  - id: aws-nap-waf
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -trimpath
+    gcflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    asmflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.productCode={{.Env.AWS_NAP_WAF_PRODUCT_CODE}} -X main.pubKeyString={{.Env.AWS_NAP_WAF_PUB_KEY}}
+    main: ./cmd/nginx-ingress/
+    binary: nginx-ingress
+    tags:
+      - aws
+  - id: aws-nap-both
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -trimpath
+    gcflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    asmflags:
+      - all=-trimpath={{.Env.GOPATH}}
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.productCode={{.Env.AWS_NAP_WAF_DOS_PRODUCT_CODE}} -X main.pubKeyString={{.Env.AWS_NAP_WAF_DOS_PUB_KEY}}
+    main: ./cmd/nginx-ingress/
+    binary: nginx-ingress
+    tags:
+      - aws
+
 archives:
   - id: kubernetes-ingress
-    format: binary
     builds: [kubernetes-ingress]
-  - id: aws
-    format: binary
-    builds: [aws]
+
 changelog:
   skip: true
+
+checksum:
+  name_template: 'checksums.txt'
+
+sboms:
+  - artifacts: archive
+    ids: [kubernetes-ingress]
+
 release:
   ids: [kubernetes-ingress]
+  extra_files:
+    - glob: ./dist/**.sbom
+
+blobs:
+  - provider: azblob
+    bucket: '{{.Env.AZURE_BUCKET_NAME}}'
+    extra_files:
+      - glob: ./dist/**.sbom
+
+milestones:
+  - close: true
+
+announce:
+  slack:
+    enabled: true
+    channel: '#announcements'
+    message_template: 'NGINX Ingress Controller {{ .Tag }} is out! Check it out: {{ .ReleaseURL }}'

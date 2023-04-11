@@ -37,6 +37,8 @@ type ConfigParams struct {
 	MainStreamLogFormat                    []string
 	MainStreamLogFormatEscaping            string
 	MainStreamSnippets                     []string
+	MainMapHashBucketSize                  string
+	MainMapHashMaxSize                     string
 	MainWorkerConnections                  string
 	MainWorkerCPUAffinity                  string
 	MainWorkerProcesses                    string
@@ -57,6 +59,7 @@ type ConfigParams struct {
 	AppProtectDosResource                  string
 	MainAppProtectDosLogFormat             []string
 	MainAppProtectDosLogFormatEscaping     string
+	MainAppProtectDosArbFqdn               string
 	ProxyBuffering                         bool
 	ProxyBuffers                           string
 	ProxyBufferSize                        string
@@ -99,6 +102,9 @@ type ConfigParams struct {
 	JWTRealm    string
 	JWTToken    string
 
+	BasicAuthSecret string
+	BasicAuthRealm  string
+
 	Ports    []int
 	SSLPorts []int
 
@@ -107,6 +113,7 @@ type ConfigParams struct {
 
 // StaticConfigParams holds immutable NGINX configuration parameters that affect the main NGINX config.
 type StaticConfigParams struct {
+	DisableIPV6                    bool
 	HealthStatus                   bool
 	HealthStatusURI                string
 	NginxStatus                    bool
@@ -155,6 +162,8 @@ func NewDefaultConfigParams(isPlus bool) *ConfigParams {
 		SSLRedirect:                   true,
 		MainServerNamesHashBucketSize: "256",
 		MainServerNamesHashMaxSize:    "1024",
+		MainMapHashBucketSize:         "256",
+		MainMapHashMaxSize:            "2048",
 		ProxyBuffering:                true,
 		MainWorkerProcesses:           "auto",
 		MainWorkerConnections:         "1024",

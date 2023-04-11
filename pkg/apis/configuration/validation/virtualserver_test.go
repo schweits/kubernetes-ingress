@@ -22,6 +22,9 @@ func TestValidateVirtualServer(t *testing.T) {
 			TLS: &v1.TLS{
 				Secret: "abc",
 			},
+			ExternalDNS: v1.ExternalDNS{
+				Enable: false,
+			},
 			Upstreams: []v1.Upstream{
 				{
 					Name:      "first",
@@ -71,6 +74,7 @@ func TestValidateHost(t *testing.T) {
 		"hello",
 		"example.com",
 		"hello-world-1",
+		"*.example.com",
 	}
 
 	for _, h := range validHosts {
@@ -86,6 +90,7 @@ func TestValidateHost(t *testing.T) {
 		"..",
 		".example.com",
 		"-hello-world-1",
+		"*.-example.com",
 	}
 
 	for _, h := range invalidHosts {
@@ -364,16 +369,38 @@ func TestValidateTLS(t *testing.T) {
 	}
 }
 
+func TestValidateExternalDNSEnabled(t *testing.T) {
+	vsv := &VirtualServerValidator{isPlus: false, isExternalDNSEnabled: true}
+
+	extDNS := &v1.ExternalDNS{
+		Enable: true,
+	}
+	allErrs := vsv.validateExternalDNS(extDNS, field.NewPath("externalDNS"))
+	if len(allErrs) > 0 {
+		t.Errorf("validateExternalDNS() returned errors %v for valid input %v", allErrs, extDNS)
+	}
+
+	vsv = &VirtualServerValidator{isPlus: false, isExternalDNSEnabled: false}
+
+	extDNS = &v1.ExternalDNS{
+		Enable: true,
+	}
+	allErrs = vsv.validateExternalDNS(extDNS, field.NewPath("externalDNS"))
+	if len(allErrs) == 0 {
+		t.Errorf("validateExternalDNS() returned no errors for invalid input %v", extDNS)
+	}
+}
+
 func TestValidateUpstreams(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		upstreams             []v1.Upstream
-		expectedUpstreamNames sets.String
+		expectedUpstreamNames sets.Set[string]
 		msg                   string
 	}{
 		{
 			upstreams:             []v1.Upstream{},
-			expectedUpstreamNames: sets.String{},
+			expectedUpstreamNames: sets.Set[string]{},
 			msg:                   "no upstreams",
 		},
 		{
@@ -431,7 +458,7 @@ func TestValidateUpstreamsFails(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		upstreams             []v1.Upstream
-		expectedUpstreamNames sets.String
+		expectedUpstreamNames sets.Set[string]
 		msg                   string
 	}{
 		{
@@ -445,7 +472,7 @@ func TestValidateUpstreamsFails(t *testing.T) {
 					ProxyNextUpstreamTries:   5,
 				},
 			},
-			expectedUpstreamNames: sets.String{},
+			expectedUpstreamNames: sets.Set[string]{},
 			msg:                   "invalid upstream name",
 		},
 		{
@@ -756,12 +783,12 @@ func TestValidateVirtualServerRoutes(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		routes        []v1.Route
-		upstreamNames sets.String
+		upstreamNames sets.Set[string]
 		msg           string
 	}{
 		{
 			routes:        []v1.Route{},
-			upstreamNames: sets.String{},
+			upstreamNames: sets.Set[string]{},
 			msg:           "no routes",
 		},
 		{
@@ -794,7 +821,7 @@ func TestValidateVirtualServerRoutesFails(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		routes        []v1.Route
-		upstreamNames sets.String
+		upstreamNames sets.Set[string]
 		msg           string
 	}{
 		{
@@ -845,7 +872,7 @@ func TestValidateRoute(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		route                 v1.Route
-		upstreamNames         sets.String
+		upstreamNames         sets.Set[string]
 		isRouteFieldForbidden bool
 		msg                   string
 	}{
@@ -939,7 +966,7 @@ func TestValidateRouteFails(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		route                 v1.Route
-		upstreamNames         sets.String
+		upstreamNames         sets.Set[string]
 		isRouteFieldForbidden bool
 		msg                   string
 	}{
@@ -963,7 +990,7 @@ func TestValidateRouteFails(t *testing.T) {
 					Pass: "-test",
 				},
 			},
-			upstreamNames:         sets.String{},
+			upstreamNames:         sets.Set[string]{},
 			isRouteFieldForbidden: false,
 			msg:                   "invalid pass action",
 		},
@@ -974,7 +1001,7 @@ func TestValidateRouteFails(t *testing.T) {
 					Pass: "test",
 				},
 			},
-			upstreamNames:         sets.String{},
+			upstreamNames:         sets.Set[string]{},
 			isRouteFieldForbidden: false,
 			msg:                   "non-existing upstream in pass action",
 		},
@@ -1392,7 +1419,7 @@ func TestValidateUpstreamFails(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		upstream      string
-		upstreamNames sets.String
+		upstreamNames sets.Set[string]
 		msg           string
 	}{
 		{
@@ -1437,6 +1464,10 @@ func TestValidateRegexPath(t *testing.T) {
 		{
 			regexPath: `~ ^/f\"oo.*\\.jpg`,
 			msg:       "regexp with escaped double quotes",
+		},
+		{
+			regexPath: "~ [0-9a-z]{4}[0-9]+",
+			msg:       "regexp with curly braces",
 		},
 	}
 
@@ -1499,6 +1530,8 @@ func TestValidateRoutePath(t *testing.T) {
 	invalidPaths := []string{
 		"",
 		"invalid",
+		// regex without preceding "~*" modifier
+		"^/foo.*\\.jpg",
 	}
 
 	for _, path := range invalidPaths {
@@ -1531,6 +1564,8 @@ func TestValidatePath(t *testing.T) {
 		"/{",
 		"/}",
 		"/abc;",
+		`/path\`,
+		`/path\n`,
 	}
 
 	for _, path := range invalidPaths {
@@ -1576,7 +1611,7 @@ func TestValidateSplitsFails(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		splits        []v1.Split
-		upstreamNames sets.String
+		upstreamNames sets.Set[string]
 		msg           string
 	}{
 		{
@@ -1873,7 +1908,7 @@ func TestValidateMatch(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		match         v1.Match
-		upstreamNames sets.String
+		upstreamNames sets.Set[string]
 		msg           string
 	}{
 		{
@@ -1938,7 +1973,7 @@ func TestValidateMatchFails(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		match         v1.Match
-		upstreamNames sets.String
+		upstreamNames sets.Set[string]
 		msg           string
 	}{
 		{
@@ -2177,13 +2212,13 @@ func TestValidateVirtualServerRouteSubroutes(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		routes        []v1.Route
-		upstreamNames sets.String
+		upstreamNames sets.Set[string]
 		pathPrefix    string
 		msg           string
 	}{
 		{
 			routes:        []v1.Route{},
-			upstreamNames: sets.String{},
+			upstreamNames: sets.Set[string]{},
 			pathPrefix:    "/",
 			msg:           "no routes",
 		},
@@ -2219,7 +2254,7 @@ func TestValidateVirtualServerRouteSubroutesFails(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		routes        []v1.Route
-		upstreamNames sets.String
+		upstreamNames sets.Set[string]
 		pathPrefix    string
 		msg           string
 	}{
@@ -2468,9 +2503,10 @@ func TestValidateUpstreamHealthCheck(t *testing.T) {
 				Value: "my.service",
 			},
 		},
-		StatusMatch: "! 500",
-		Mandatory:   true,
-		Persistent:  true,
+		StatusMatch:   "! 500",
+		Mandatory:     true,
+		Persistent:    true,
+		KeepaliveTime: "120s",
 	}
 
 	allErrs := validateUpstreamHealthCheck(hc, "", field.NewPath("healthCheck"))

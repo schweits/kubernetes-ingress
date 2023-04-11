@@ -90,6 +90,7 @@ type Server struct {
 	RealIPRecursive bool
 
 	JWTAuth              *JWTAuth
+	BasicAuth            *BasicAuth
 	JWTRedirectLocations []JWTRedirectLocation
 
 	Ports                        []int
@@ -109,12 +110,20 @@ type Server struct {
 	AppProtectDosAccessLogDst    string
 
 	SpiffeCerts bool
+
+	DisableIPV6 bool
 }
 
 // JWTRedirectLocation describes a location for redirecting client requests to a login URL for JWT Authentication.
 type JWTRedirectLocation struct {
 	Name     string
 	LoginURL string
+}
+
+// BasicAuth holds HTTP Basic authentication parameters
+type BasicAuth struct {
+	Realm  string
+	Secret string
 }
 
 // JWTAuth holds JWT authentication configuration.
@@ -144,6 +153,7 @@ type Location struct {
 	ProxyMaxTempFileSize string
 	ProxySSLName         string
 	JWTAuth              *JWTAuth
+	BasicAuth            *BasicAuth
 	ServiceName          string
 
 	MinionIngress *Ingress
@@ -154,6 +164,7 @@ type MainConfig struct {
 	AccessLogOff                       bool
 	DefaultServerAccessLogOff          bool
 	DefaultServerReturn                string
+	DisableIPV6                        bool
 	ErrorLogLevel                      string
 	HealthStatus                       bool
 	HealthStatusURI                    string
@@ -181,6 +192,8 @@ type MainConfig struct {
 	SetRealIPFrom                      []string
 	ServerNamesHashBucketSize          string
 	ServerNamesHashMaxSize             string
+	MapHashBucketSize                  string
+	MapHashMaxSize                     string
 	ServerTokens                       string
 	SSLRejectHandshake                 bool
 	SSLCiphers                         string
@@ -209,6 +222,7 @@ type MainConfig struct {
 	AppProtectDosLoadModule            bool
 	AppProtectDosLogFormat             []string
 	AppProtectDosLogFormatEscaping     string
+	AppProtectDosArbFqdn               string
 	InternalRouteServer                bool
 	InternalRouteServerName            string
 	LatencyMetrics                     bool

@@ -1,21 +1,10 @@
-import pytest, requests
-from kubernetes.client.rest import ApiException
-from suite.resources_utils import wait_before_test, replace_configmap_from_yaml
-from suite.custom_resources_utils import (
-    read_custom_resource,
-)
-from suite.vs_vsr_resources_utils import (
-    delete_virtual_server,
-    create_virtual_server_from_yaml,
-    patch_virtual_server_from_yaml,
-    patch_v_s_route_from_yaml,
-)
-from suite.policy_resources_utils import (
-    create_policy_from_yaml,
-    delete_policy,
-    read_policy,
-)
-from settings import TEST_DATA, DEPLOYMENTS
+import pytest
+import requests
+from settings import DEPLOYMENTS, TEST_DATA
+from suite.utils.custom_resources_utils import read_custom_resource
+from suite.utils.policy_resources_utils import create_policy_from_yaml, delete_policy
+from suite.utils.resources_utils import replace_configmap_from_yaml, wait_before_test
+from suite.utils.vs_vsr_resources_utils import patch_v_s_route_from_yaml, patch_virtual_server_from_yaml
 
 std_cm_src = f"{DEPLOYMENTS}/common/nginx-config.yaml"
 test_cm_src = f"{TEST_DATA}/access-control/configmap/nginx-config.yaml"
@@ -24,21 +13,11 @@ deny_pol_src = f"{TEST_DATA}/access-control/policies/access-control-policy-deny.
 allow_pol_src = f"{TEST_DATA}/access-control/policies/access-control-policy-allow.yaml"
 invalid_pol_src = f"{TEST_DATA}/access-control/policies/access-control-policy-invalid.yaml"
 deny_vsr_src = f"{TEST_DATA}/access-control/route-subroute/virtual-server-route-deny-subroute.yaml"
-allow_vsr_src = (
-    f"{TEST_DATA}/access-control/route-subroute/virtual-server-route-allow-subroute.yaml"
-)
-override_vsr_src = (
-    f"{TEST_DATA}/access-control/route-subroute/virtual-server-route-override-subroute.yaml"
-)
-invalid_vsr_src = (
-    f"{TEST_DATA}/access-control/route-subroute/virtual-server-route-invalid-subroute.yaml"
-)
-vs_spec_vsr_override_src = (
-    f"{TEST_DATA}/access-control/route-subroute/virtual-server-vsr-spec-override.yaml"
-)
-vs_route_vsr_override_src = (
-    f"{TEST_DATA}/access-control/route-subroute/virtual-server-vsr-route-override.yaml"
-)
+allow_vsr_src = f"{TEST_DATA}/access-control/route-subroute/virtual-server-route-allow-subroute.yaml"
+override_vsr_src = f"{TEST_DATA}/access-control/route-subroute/virtual-server-route-override-subroute.yaml"
+invalid_vsr_src = f"{TEST_DATA}/access-control/route-subroute/virtual-server-route-invalid-subroute.yaml"
+vs_spec_vsr_override_src = f"{TEST_DATA}/access-control/route-subroute/virtual-server-vsr-spec-override.yaml"
+vs_route_vsr_override_src = f"{TEST_DATA}/access-control/route-subroute/virtual-server-vsr-route-override.yaml"
 
 
 @pytest.fixture(scope="class")
@@ -58,13 +37,14 @@ def config_setup(request, kube_apis, ingress_controller_prerequisites) -> None:
     )
 
     def fin():
-        print(f"------------- Restore ConfigMap --------------")
-        replace_configmap_from_yaml(
-            kube_apis.v1,
-            ingress_controller_prerequisites.config_map["metadata"]["name"],
-            ingress_controller_prerequisites.namespace,
-            std_cm_src,
-        )
+        if request.config.getoption("--skip-fixture-teardown") == "no":
+            print(f"------------- Restore ConfigMap --------------")
+            replace_configmap_from_yaml(
+                kube_apis.v1,
+                ingress_controller_prerequisites.config_map["metadata"]["name"],
+                ingress_controller_prerequisites.namespace,
+                std_cm_src,
+            )
 
     request.addfinalizer(fin)
 
@@ -118,9 +98,7 @@ class TestAccessControlPoliciesVsr:
         assert resp.status_code == 200
 
         print(f"Create deny policy")
-        pol_name = create_policy_from_yaml(
-            kube_apis.custom_objects, deny_pol_src, v_s_route_setup.route_m.namespace
-        )
+        pol_name = create_policy_from_yaml(kube_apis.custom_objects, deny_pol_src, v_s_route_setup.route_m.namespace)
         patch_v_s_route_from_yaml(
             kube_apis.custom_objects,
             v_s_route_setup.route_m.name,
@@ -180,9 +158,7 @@ class TestAccessControlPoliciesVsr:
         assert resp.status_code == 200
 
         print(f"Create allow policy")
-        pol_name = create_policy_from_yaml(
-            kube_apis.custom_objects, allow_pol_src, v_s_route_setup.route_m.namespace
-        )
+        pol_name = create_policy_from_yaml(kube_apis.custom_objects, allow_pol_src, v_s_route_setup.route_m.namespace)
         patch_v_s_route_from_yaml(
             kube_apis.custom_objects,
             v_s_route_setup.route_m.name,
@@ -301,9 +277,7 @@ class TestAccessControlPoliciesVsr:
         assert resp.status_code == 200
 
         print(f"Create invalid policy")
-        pol_name = create_policy_from_yaml(
-            kube_apis.custom_objects, invalid_pol_src, v_s_route_setup.route_m.namespace
-        )
+        pol_name = create_policy_from_yaml(kube_apis.custom_objects, invalid_pol_src, v_s_route_setup.route_m.namespace)
         patch_v_s_route_from_yaml(
             kube_apis.custom_objects,
             v_s_route_setup.route_m.name,
@@ -335,10 +309,7 @@ class TestAccessControlPoliciesVsr:
             and policy_info["status"]["state"] == "Invalid"
         )
         assert resp.status_code == 500 and "500 Internal Server Error" in resp.text
-        assert (
-            vsr_info["status"]["state"] == "Warning"
-            and vsr_info["status"]["reason"] == "AddedOrUpdatedWithWarning"
-        )
+        assert vsr_info["status"]["state"] == "Warning" and vsr_info["status"]["reason"] == "AddedOrUpdatedWithWarning"
 
     @pytest.mark.parametrize("src", [vs_spec_vsr_override_src, vs_route_vsr_override_src])
     def test_override_vs_vsr(

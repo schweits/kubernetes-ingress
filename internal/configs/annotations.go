@@ -7,6 +7,9 @@ import (
 // JWTKeyAnnotation is the annotation where the Secret with a JWK is specified.
 const JWTKeyAnnotation = "nginx.com/jwt-key"
 
+// BasicAuthSecretAnnotation is the annotation where the Secret with the HTTP basic user list
+const BasicAuthSecretAnnotation = "nginx.org/basic-auth-secret" // #nosec G101
+
 // AppProtectPolicyAnnotation is where the NGINX App Protect policy is specified
 const AppProtectPolicyAnnotation = "appprotect.f5.com/app-protect-policy"
 
@@ -145,20 +148,12 @@ func parseAnnotations(ingEx *IngressEx, baseCfgParams *ConfigParams, isPlus bool
 		}
 	}
 
-	if serverSnippets, exists, err := GetMapKeyAsStringSlice(ingEx.Ingress.Annotations, "nginx.org/server-snippets", ingEx.Ingress, "\n"); exists {
-		if err != nil {
-			glog.Error(err)
-		} else {
-			cfgParams.ServerSnippets = serverSnippets
-		}
+	if serverSnippets, exists := GetMapKeyAsStringSlice(ingEx.Ingress.Annotations, "nginx.org/server-snippets", ingEx.Ingress, "\n"); exists {
+		cfgParams.ServerSnippets = serverSnippets
 	}
 
-	if locationSnippets, exists, err := GetMapKeyAsStringSlice(ingEx.Ingress.Annotations, "nginx.org/location-snippets", ingEx.Ingress, "\n"); exists {
-		if err != nil {
-			glog.Error(err)
-		} else {
-			cfgParams.LocationSnippets = locationSnippets
-		}
+	if locationSnippets, exists := GetMapKeyAsStringSlice(ingEx.Ingress.Annotations, "nginx.org/location-snippets", ingEx.Ingress, "\n"); exists {
+		cfgParams.LocationSnippets = locationSnippets
 	}
 
 	if proxyConnectTimeout, exists := ingEx.Ingress.Annotations["nginx.org/proxy-connect-timeout"]; exists {
@@ -185,20 +180,12 @@ func parseAnnotations(ingEx *IngressEx, baseCfgParams *ConfigParams, isPlus bool
 		}
 	}
 
-	if proxyHideHeaders, exists, err := GetMapKeyAsStringSlice(ingEx.Ingress.Annotations, "nginx.org/proxy-hide-headers", ingEx.Ingress, ","); exists {
-		if err != nil {
-			glog.Error(err)
-		} else {
-			cfgParams.ProxyHideHeaders = proxyHideHeaders
-		}
+	if proxyHideHeaders, exists := GetMapKeyAsStringSlice(ingEx.Ingress.Annotations, "nginx.org/proxy-hide-headers", ingEx.Ingress, ","); exists {
+		cfgParams.ProxyHideHeaders = proxyHideHeaders
 	}
 
-	if proxyPassHeaders, exists, err := GetMapKeyAsStringSlice(ingEx.Ingress.Annotations, "nginx.org/proxy-pass-headers", ingEx.Ingress, ","); exists {
-		if err != nil {
-			glog.Error(err)
-		} else {
-			cfgParams.ProxyPassHeaders = proxyPassHeaders
-		}
+	if proxyPassHeaders, exists := GetMapKeyAsStringSlice(ingEx.Ingress.Annotations, "nginx.org/proxy-pass-headers", ingEx.Ingress, ","); exists {
+		cfgParams.ProxyPassHeaders = proxyPassHeaders
 	}
 
 	if clientMaxBodySize, exists := ingEx.Ingress.Annotations["nginx.org/client-max-body-size"]; exists {
@@ -297,6 +284,13 @@ func parseAnnotations(ingEx *IngressEx, baseCfgParams *ConfigParams, isPlus bool
 		if jwtLoginURL, exists := ingEx.Ingress.Annotations["nginx.com/jwt-login-url"]; exists {
 			cfgParams.JWTLoginURL = jwtLoginURL
 		}
+	}
+
+	if basicSecret, exists := ingEx.Ingress.Annotations[BasicAuthSecretAnnotation]; exists {
+		cfgParams.BasicAuthSecret = basicSecret
+	}
+	if basicRealm, exists := ingEx.Ingress.Annotations["nginx.org/basic-auth-realm"]; exists {
+		cfgParams.BasicAuthRealm = basicRealm
 	}
 
 	if values, exists := ingEx.Ingress.Annotations["nginx.org/listen-ports"]; exists {

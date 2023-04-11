@@ -1,17 +1,22 @@
 from ssl import SSLError
 
 import pytest
-
-from suite.resources_utils import create_secret_from_yaml, is_secret_present, delete_secret, wait_before_test, \
-    ensure_connection, replace_secret
-from suite.ssl_utils import get_server_certificate_subject
-from settings import TEST_DATA, DEPLOYMENTS
+from settings import BASEDIR, DEPLOYMENTS, TEST_DATA
+from suite.utils.resources_utils import (
+    create_secret_from_yaml,
+    delete_secret,
+    ensure_connection,
+    is_secret_present,
+    replace_secret,
+    wait_before_test,
+)
+from suite.utils.ssl_utils import get_server_certificate_subject
 
 
 def assert_cn(endpoint, cn):
-    host = "random" # any host would work
+    host = "random"  # any host would work
     subject_dict = get_server_certificate_subject(endpoint.public_ip, host, endpoint.port_ssl)
-    assert subject_dict[b'CN'] == cn.encode('ascii')
+    assert subject_dict[b"CN"] == cn.encode("ascii")
 
 
 def assert_unrecognized_name_error(endpoint):
@@ -24,12 +29,12 @@ def assert_unrecognized_name_error(endpoint):
         assert "TLSV1_UNRECOGNIZED_NAME" in e.reason
 
 
-secret_path=f"{DEPLOYMENTS}/common/default-server-secret.yaml"
-test_data_path=f"{TEST_DATA}/default-server"
-invalid_secret_path=f"{test_data_path}/invalid-tls-secret.yaml"
-new_secret_path=f"{test_data_path}/new-tls-secret.yaml"
-secret_name="default-server-secret"
-secret_namespace="nginx-ingress"
+secret_path = f"{TEST_DATA}/common/default-server-secret.yaml"
+test_data_path = f"{TEST_DATA}/default-server"
+invalid_secret_path = f"{test_data_path}/invalid-tls-secret.yaml"
+new_secret_path = f"{test_data_path}/new-tls-secret.yaml"
+secret_name = "default-server-secret"
+secret_namespace = "nginx-ingress"
 
 
 @pytest.fixture(scope="class")
@@ -40,11 +45,12 @@ def default_server_setup(ingress_controller_endpoint, ingress_controller):
 @pytest.fixture(scope="class")
 def secret_setup(request, kube_apis):
     def fin():
-        if is_secret_present(kube_apis.v1, secret_name, secret_namespace):
-            print("cleaning up secret!")
-            delete_secret(kube_apis.v1, secret_name, secret_namespace)
-            # restore the original secret created in ingress_controller_prerequisites fixture
-            create_secret_from_yaml(kube_apis.v1, secret_namespace, secret_path)
+        if request.config.getoption("--skip-fixture-teardown") == "no":
+            if is_secret_present(kube_apis.v1, secret_name, secret_namespace):
+                print("cleaning up secret!")
+                delete_secret(kube_apis.v1, secret_name, secret_namespace)
+                # restore the original secret created in ingress_controller_prerequisites fixture
+                create_secret_from_yaml(kube_apis.v1, secret_namespace, secret_path)
 
     request.addfinalizer(fin)
 

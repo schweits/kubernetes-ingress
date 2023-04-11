@@ -96,7 +96,7 @@ func TestUpstreamNamerForVirtualServer(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	upstreamNamer := newUpstreamNamerForVirtualServer(&virtualServer)
+	upstreamNamer := NewUpstreamNamerForVirtualServer(&virtualServer)
 	upstream := "test"
 
 	expected := "vs_default_cafe_test"
@@ -121,7 +121,7 @@ func TestUpstreamNamerForVirtualServerRoute(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	upstreamNamer := newUpstreamNamerForVirtualServerRoute(&virtualServer, &virtualServerRoute)
+	upstreamNamer := NewUpstreamNamerForVirtualServerRoute(&virtualServer, &virtualServerRoute)
 	upstream := "test"
 
 	expected := "vs_default_cafe_vsr_default_coffee_test"
@@ -651,6 +651,141 @@ func TestGenerateVirtualServerConfig(t *testing.T) {
 		isPlus,
 		isResolverConfigured,
 		&StaticConfigParams{TLSPassthrough: true},
+		isWildcardEnabled,
+	)
+
+	result, warnings := vsc.GenerateVirtualServerConfig(&virtualServerEx, nil, nil)
+	if diff := cmp.Diff(expected, result); diff != "" {
+		t.Errorf("GenerateVirtualServerConfig() mismatch (-want +got):\n%s", diff)
+	}
+
+	if len(warnings) != 0 {
+		t.Errorf("GenerateVirtualServerConfig returned warnings: %v", vsc.warnings)
+	}
+}
+
+func TestGenerateVirtualServerConfigIPV6Disabled(t *testing.T) {
+	t.Parallel()
+	virtualServerEx := VirtualServerEx{
+		VirtualServer: &conf_v1.VirtualServer{
+			ObjectMeta: meta_v1.ObjectMeta{
+				Name:      "cafe",
+				Namespace: "default",
+			},
+			Spec: conf_v1.VirtualServerSpec{
+				Host: "cafe.example.com",
+				Upstreams: []conf_v1.Upstream{
+					{
+						Name:    "tea",
+						Service: "tea-svc",
+						Port:    80,
+					},
+					{
+						Name:    "coffee",
+						Service: "coffee-svc",
+						Port:    80,
+					},
+				},
+				Routes: []conf_v1.Route{
+					{
+						Path: "/tea",
+						Action: &conf_v1.Action{
+							Pass: "tea",
+						},
+					},
+					{
+						Path: "/coffee",
+						Action: &conf_v1.Action{
+							Pass: "coffee",
+						},
+					},
+				},
+			},
+		},
+		Endpoints: map[string][]string{
+			"default/tea-svc:80": {
+				"10.0.0.20:80",
+			},
+			"default/coffee-svc:80": {
+				"10.0.0.40:80",
+			},
+		},
+	}
+
+	baseCfgParams := ConfigParams{}
+
+	expected := version2.VirtualServerConfig{
+		Upstreams: []version2.Upstream{
+			{
+				UpstreamLabels: version2.UpstreamLabels{
+					Service:           "tea-svc",
+					ResourceType:      "virtualserver",
+					ResourceName:      "cafe",
+					ResourceNamespace: "default",
+				},
+				Name: "vs_default_cafe_tea",
+				Servers: []version2.UpstreamServer{
+					{
+						Address: "10.0.0.20:80",
+					},
+				},
+			},
+			{
+				UpstreamLabels: version2.UpstreamLabels{
+					Service:           "coffee-svc",
+					ResourceType:      "virtualserver",
+					ResourceName:      "cafe",
+					ResourceNamespace: "default",
+				},
+				Name: "vs_default_cafe_coffee",
+				Servers: []version2.UpstreamServer{
+					{
+						Address: "10.0.0.40:80",
+					},
+				},
+			},
+		},
+		HTTPSnippets:  []string{},
+		LimitReqZones: []version2.LimitReqZone{},
+		Server: version2.Server{
+			ServerName:  "cafe.example.com",
+			StatusZone:  "cafe.example.com",
+			VSNamespace: "default",
+			VSName:      "cafe",
+			DisableIPV6: true,
+			Locations: []version2.Location{
+				{
+					Path:                     "/tea",
+					ProxyPass:                "http://vs_default_cafe_tea",
+					ProxyNextUpstream:        "error timeout",
+					ProxyNextUpstreamTimeout: "0s",
+					ProxySSLName:             "tea-svc.default.svc",
+					ProxyPassRequestHeaders:  true,
+					ProxySetHeaders:          []version2.Header{{Name: "Host", Value: "$host"}},
+					ServiceName:              "tea-svc",
+				},
+				{
+					Path:                     "/coffee",
+					ProxyPass:                "http://vs_default_cafe_coffee",
+					ProxyNextUpstream:        "error timeout",
+					ProxyNextUpstreamTimeout: "0s",
+					ProxySSLName:             "coffee-svc.default.svc",
+					ProxyPassRequestHeaders:  true,
+					ProxySetHeaders:          []version2.Header{{Name: "Host", Value: "$host"}},
+					ServiceName:              "coffee-svc",
+				},
+			},
+		},
+	}
+
+	isPlus := false
+	isResolverConfigured := false
+	isWildcardEnabled := false
+	vsc := newVirtualServerConfigurator(
+		&baseCfgParams,
+		isPlus,
+		isResolverConfigured,
+		&StaticConfigParams{DisableIPV6: true},
 		isWildcardEnabled,
 	)
 
@@ -2556,7 +2691,9 @@ func TestGeneratePolicies(t *testing.T) {
 		vsNamespace:    "default",
 		vsName:         "test",
 	}
-	ingressMTLSCertPath := "/etc/nginx/secrets/default-ingress-mtls-secret"
+	ingressMTLSCertPath := "/etc/nginx/secrets/default-ingress-mtls-secret-ca.crt"
+	ingressMTLSCrlPath := "/etc/nginx/secrets/default-ingress-mtls-secret-ca.crl"
+	ingressMTLSCertAndCrlPath := fmt.Sprintf("%s %s", ingressMTLSCertPath, ingressMTLSCrlPath)
 	policyOpts := policyOptions{
 		tls: true,
 		secretRefs: map[string]*secrets.SecretReference{
@@ -2565,6 +2702,15 @@ func TestGeneratePolicies(t *testing.T) {
 					Type: secrets.SecretTypeCA,
 				},
 				Path: ingressMTLSCertPath,
+			},
+			"default/ingress-mtls-secret-crl": {
+				Secret: &api_v1.Secret{
+					Type: secrets.SecretTypeCA,
+					Data: map[string][]byte{
+						"ca.crl": []byte("base64crl"),
+					},
+				},
+				Path: ingressMTLSCertAndCrlPath,
 			},
 			"default/egress-mtls-secret": {
 				Secret: &api_v1.Secret{
@@ -2583,6 +2729,12 @@ func TestGeneratePolicies(t *testing.T) {
 					Type: secrets.SecretTypeJWK,
 				},
 				Path: "/etc/nginx/secrets/default-jwt-secret",
+			},
+			"default/htpasswd-secret": {
+				Secret: &api_v1.Secret{
+					Type: secrets.SecretTypeHtpasswd,
+				},
+				Path: "/etc/nginx/secrets/default-htpasswd-secret",
 			},
 			"default/oidc-secret": {
 				Secret: &api_v1.Secret{
@@ -2815,6 +2967,107 @@ func TestGeneratePolicies(t *testing.T) {
 		{
 			policyRefs: []conf_v1.PolicyReference{
 				{
+					Name:      "jwt-policy-2",
+					Namespace: "default",
+				},
+			},
+			policies: map[string]*conf_v1.Policy{
+				"default/jwt-policy-2": {
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "jwt-policy",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						JWTAuth: &conf_v1.JWTAuth{
+							Realm:    "My Test API",
+							JwksURI:  "https://idp.example.com:443/keys",
+							KeyCache: "1h",
+						},
+					},
+				},
+			},
+			expected: policiesCfg{
+				JWTAuth: &version2.JWTAuth{
+					Realm: "My Test API",
+					JwksURI: version2.JwksURI{
+						JwksScheme: "https",
+						JwksHost:   "idp.example.com",
+						JwksPort:   "443",
+						JwksPath:   "/keys",
+					},
+					KeyCache: "1h",
+				},
+			},
+			msg: "Basic jwks example",
+		},
+		{
+			policyRefs: []conf_v1.PolicyReference{
+				{
+					Name:      "jwt-policy-2",
+					Namespace: "default",
+				},
+			},
+			policies: map[string]*conf_v1.Policy{
+				"default/jwt-policy-2": {
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "jwt-policy",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						JWTAuth: &conf_v1.JWTAuth{
+							Realm:    "My Test API",
+							JwksURI:  "https://idp.example.com/keys",
+							KeyCache: "1h",
+						},
+					},
+				},
+			},
+			expected: policiesCfg{
+				JWTAuth: &version2.JWTAuth{
+					Realm: "My Test API",
+					JwksURI: version2.JwksURI{
+						JwksScheme: "https",
+						JwksHost:   "idp.example.com",
+						JwksPort:   "",
+						JwksPath:   "/keys",
+					},
+					KeyCache: "1h",
+				},
+			},
+			msg: "Basic jwks example, no port in JwksURI",
+		},
+		{
+			policyRefs: []conf_v1.PolicyReference{
+				{
+					Name:      "basic-auth-policy",
+					Namespace: "default",
+				},
+			},
+			policies: map[string]*conf_v1.Policy{
+				"default/basic-auth-policy": {
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "basic-auth-policy",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						BasicAuth: &conf_v1.BasicAuth{
+							Realm:  "My Test API",
+							Secret: "htpasswd-secret",
+						},
+					},
+				},
+			},
+			expected: policiesCfg{
+				BasicAuth: &version2.BasicAuth{
+					Secret: "/etc/nginx/secrets/default-htpasswd-secret",
+					Realm:  "My Test API",
+				},
+			},
+			msg: "basic auth reference",
+		},
+		{
+			policyRefs: []conf_v1.PolicyReference{
+				{
 					Name:      "ingress-mtls-policy",
 					Namespace: "default",
 				},
@@ -2842,6 +3095,71 @@ func TestGeneratePolicies(t *testing.T) {
 				},
 			},
 			msg: "ingressMTLS reference",
+		},
+		{
+			policyRefs: []conf_v1.PolicyReference{
+				{
+					Name:      "ingress-mtls-policy-crl",
+					Namespace: "default",
+				},
+			},
+			policies: map[string]*conf_v1.Policy{
+				"default/ingress-mtls-policy-crl": {
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "ingress-mtls-policy-crl",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						IngressMTLS: &conf_v1.IngressMTLS{
+							ClientCertSecret: "ingress-mtls-secret-crl",
+							VerifyClient:     "off",
+						},
+					},
+				},
+			},
+			context: "spec",
+			expected: policiesCfg{
+				IngressMTLS: &version2.IngressMTLS{
+					ClientCert:   ingressMTLSCertPath,
+					ClientCrl:    ingressMTLSCrlPath,
+					VerifyClient: "off",
+					VerifyDepth:  1,
+				},
+			},
+			msg: "ingressMTLS reference with ca.crl field in secret",
+		},
+		{
+			policyRefs: []conf_v1.PolicyReference{
+				{
+					Name:      "ingress-mtls-policy-crl",
+					Namespace: "default",
+				},
+			},
+			policies: map[string]*conf_v1.Policy{
+				"default/ingress-mtls-policy-crl": {
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "ingress-mtls-policy-crl",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						IngressMTLS: &conf_v1.IngressMTLS{
+							ClientCertSecret: "ingress-mtls-secret",
+							CrlFileName:      "default-ingress-mtls-secret-ca.crl",
+							VerifyClient:     "off",
+						},
+					},
+				},
+			},
+			context: "spec",
+			expected: policiesCfg{
+				IngressMTLS: &version2.IngressMTLS{
+					ClientCert:   ingressMTLSCertPath,
+					ClientCrl:    ingressMTLSCrlPath,
+					VerifyClient: "off",
+					VerifyDepth:  1,
+				},
+			},
+			msg: "ingressMTLS reference with crl field in policy",
 		},
 		{
 			policyRefs: []conf_v1.PolicyReference{
@@ -2894,14 +3212,15 @@ func TestGeneratePolicies(t *testing.T) {
 					},
 					Spec: conf_v1.PolicySpec{
 						OIDC: &conf_v1.OIDC{
-							AuthEndpoint:   "http://example.com/auth",
-							TokenEndpoint:  "http://example.com/token",
-							JWKSURI:        "http://example.com/jwks",
-							ClientID:       "client-id",
-							ClientSecret:   "oidc-secret",
-							Scope:          "scope",
-							RedirectURI:    "/redirect",
-							ZoneSyncLeeway: createPointerFromInt(20),
+							AuthEndpoint:      "http://example.com/auth",
+							TokenEndpoint:     "http://example.com/token",
+							JWKSURI:           "http://example.com/jwks",
+							ClientID:          "client-id",
+							ClientSecret:      "oidc-secret",
+							Scope:             "scope",
+							RedirectURI:       "/redirect",
+							ZoneSyncLeeway:    createPointerFromInt(20),
+							AccessTokenEnable: true,
 						},
 					},
 				},
@@ -2959,6 +3278,55 @@ func TestGeneratePolicies(t *testing.T) {
 	}
 }
 
+func TestGeneratePolicies_GeneratesWAFPolicyOnValidApBundle(t *testing.T) {
+	t.Parallel()
+
+	ownerDetails := policyOwnerDetails{
+		owner:          nil, // nil is OK for the unit test
+		ownerNamespace: "default",
+		vsNamespace:    "default",
+		vsName:         "test",
+	}
+
+	test := struct {
+		policyRefs []conf_v1.PolicyReference
+		policies   map[string]*conf_v1.Policy
+		policyOpts policyOptions
+		context    string
+		want       policiesCfg
+	}{
+		policyRefs: []conf_v1.PolicyReference{
+			{
+				Name:      "waf-bundle",
+				Namespace: "default",
+			},
+		},
+		policies: map[string]*conf_v1.Policy{
+			"default/waf-bundle": {
+				Spec: conf_v1.PolicySpec{
+					WAF: &conf_v1.WAF{
+						Enable:   true,
+						ApBundle: "testWAFPolicyBundle.tgz",
+					},
+				},
+			},
+		},
+		context: "route",
+	}
+
+	vsc := newVirtualServerConfigurator(&ConfigParams{}, false, false, &StaticConfigParams{}, false)
+	want := policiesCfg{
+		WAF: &version2.WAF{
+			Enable:   "on",
+			ApBundle: "/etc/nginx/waf/bundles/testWAFPolicyBundle.tgz",
+		},
+	}
+	got := vsc.generatePolicies(ownerDetails, test.policyRefs, test.policies, test.context, policyOptions{})
+	if !cmp.Equal(want, got) {
+		t.Error(cmp.Diff(want, got))
+	}
+}
+
 func TestGeneratePoliciesFails(t *testing.T) {
 	t.Parallel()
 	ownerDetails := policyOwnerDetails{
@@ -2970,6 +3338,9 @@ func TestGeneratePoliciesFails(t *testing.T) {
 
 	dryRunOverride := true
 	rejectCodeOverride := 505
+
+	ingressMTLSCertPath := "/etc/nginx/secrets/default-ingress-mtls-secret-ca.crt"
+	ingressMTLSCrlPath := "/etc/nginx/secrets/default-ingress-mtls-secret-ca.crl"
 
 	tests := []struct {
 		policyRefs        []conf_v1.PolicyReference
@@ -3273,6 +3644,160 @@ func TestGeneratePoliciesFails(t *testing.T) {
 		{
 			policyRefs: []conf_v1.PolicyReference{
 				{
+					Name:      "basic-auth-policy",
+					Namespace: "default",
+				},
+			},
+			policies: map[string]*conf_v1.Policy{
+				"default/basic-auth-policy": {
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "basic-auth-policy",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						BasicAuth: &conf_v1.BasicAuth{
+							Realm:  "test",
+							Secret: "htpasswd-secret",
+						},
+					},
+				},
+			},
+			policyOpts: policyOptions{
+				secretRefs: map[string]*secrets.SecretReference{
+					"default/htpasswd-secret": {
+						Secret: &api_v1.Secret{
+							Type: secrets.SecretTypeHtpasswd,
+						},
+						Error: errors.New("secret is invalid"),
+					},
+				},
+			},
+			expected: policiesCfg{
+				ErrorReturn: &version2.Return{
+					Code: 500,
+				},
+			},
+			expectedWarnings: Warnings{
+				nil: {
+					`Basic Auth policy default/basic-auth-policy references an invalid secret default/htpasswd-secret: secret is invalid`,
+				},
+			},
+			expectedOidc: &oidcPolicyCfg{},
+			msg:          "basic auth reference missing secret",
+		},
+		{
+			policyRefs: []conf_v1.PolicyReference{
+				{
+					Name:      "basic-auth-policy",
+					Namespace: "default",
+				},
+			},
+			policies: map[string]*conf_v1.Policy{
+				"default/basic-auth-policy": {
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "basic-auth-policy",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						BasicAuth: &conf_v1.BasicAuth{
+							Realm:  "test",
+							Secret: "htpasswd-secret",
+						},
+					},
+				},
+			},
+			policyOpts: policyOptions{
+				secretRefs: map[string]*secrets.SecretReference{
+					"default/htpasswd-secret": {
+						Secret: &api_v1.Secret{
+							Type: secrets.SecretTypeCA,
+						},
+					},
+				},
+			},
+			expected: policiesCfg{
+				ErrorReturn: &version2.Return{
+					Code: 500,
+				},
+			},
+			expectedWarnings: Warnings{
+				nil: {
+					`Basic Auth policy default/basic-auth-policy references a secret default/htpasswd-secret of a wrong type 'nginx.org/ca', must be 'nginx.org/htpasswd'`,
+				},
+			},
+			expectedOidc: &oidcPolicyCfg{},
+			msg:          "basic auth references wrong secret type",
+		},
+		{
+			policyRefs: []conf_v1.PolicyReference{
+				{
+					Name:      "basic-auth-policy",
+					Namespace: "default",
+				},
+				{
+					Name:      "basic-auth-policy2",
+					Namespace: "default",
+				},
+			},
+			policies: map[string]*conf_v1.Policy{
+				"default/basic-auth-policy": {
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "basic-auth-policy",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						BasicAuth: &conf_v1.BasicAuth{
+							Realm:  "test",
+							Secret: "htpasswd-secret",
+						},
+					},
+				},
+				"default/basic-auth-policy2": {
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "basic-auth-policy2",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						BasicAuth: &conf_v1.BasicAuth{
+							Realm:  "test",
+							Secret: "htpasswd-secret2",
+						},
+					},
+				},
+			},
+			policyOpts: policyOptions{
+				secretRefs: map[string]*secrets.SecretReference{
+					"default/htpasswd-secret": {
+						Secret: &api_v1.Secret{
+							Type: secrets.SecretTypeHtpasswd,
+						},
+						Path: "/etc/nginx/secrets/default-htpasswd-secret",
+					},
+					"default/htpasswd-secret2": {
+						Secret: &api_v1.Secret{
+							Type: secrets.SecretTypeHtpasswd,
+						},
+						Path: "/etc/nginx/secrets/default-htpasswd-secret2",
+					},
+				},
+			},
+			expected: policiesCfg{
+				BasicAuth: &version2.BasicAuth{
+					Secret: "/etc/nginx/secrets/default-htpasswd-secret",
+					Realm:  "test",
+				},
+			},
+			expectedWarnings: Warnings{
+				nil: {
+					`Multiple basic auth policies in the same context is not valid. Basic auth policy default/basic-auth-policy2 will be ignored`,
+				},
+			},
+			expectedOidc: &oidcPolicyCfg{},
+			msg:          "multi basic auth reference",
+		},
+		{
+			policyRefs: []conf_v1.PolicyReference{
+				{
 					Name:      "ingress-mtls-policy",
 					Namespace: "default",
 				},
@@ -3394,14 +3919,14 @@ func TestGeneratePoliciesFails(t *testing.T) {
 						Secret: &api_v1.Secret{
 							Type: secrets.SecretTypeCA,
 						},
-						Path: "/etc/nginx/secrets/default-ingress-mtls-secret",
+						Path: ingressMTLSCertPath,
 					},
 				},
 			},
 			context: "spec",
 			expected: policiesCfg{
 				IngressMTLS: &version2.IngressMTLS{
-					ClientCert:   "/etc/nginx/secrets/default-ingress-mtls-secret",
+					ClientCert:   ingressMTLSCertPath,
 					VerifyClient: "on",
 					VerifyDepth:  1,
 				},
@@ -3441,7 +3966,7 @@ func TestGeneratePoliciesFails(t *testing.T) {
 						Secret: &api_v1.Secret{
 							Type: secrets.SecretTypeCA,
 						},
-						Path: "/etc/nginx/secrets/default-ingress-mtls-secret",
+						Path: ingressMTLSCertPath,
 					},
 				},
 			},
@@ -3486,7 +4011,7 @@ func TestGeneratePoliciesFails(t *testing.T) {
 						Secret: &api_v1.Secret{
 							Type: secrets.SecretTypeCA,
 						},
-						Path: "/etc/nginx/secrets/default-ingress-mtls-secret",
+						Path: ingressMTLSCertPath,
 					},
 				},
 			},
@@ -3503,6 +4028,59 @@ func TestGeneratePoliciesFails(t *testing.T) {
 			},
 			expectedOidc: &oidcPolicyCfg{},
 			msg:          "ingress mtls missing TLS config",
+		},
+		{
+			policyRefs: []conf_v1.PolicyReference{
+				{
+					Name:      "ingress-mtls-policy",
+					Namespace: "default",
+				},
+			},
+			policies: map[string]*conf_v1.Policy{
+				"default/ingress-mtls-policy": {
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "ingress-mtls-policy",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						IngressMTLS: &conf_v1.IngressMTLS{
+							ClientCertSecret: "ingress-mtls-secret",
+							CrlFileName:      "default-ingress-mtls-secret-ca.crl",
+						},
+					},
+				},
+			},
+			policyOpts: policyOptions{
+				tls: true,
+				secretRefs: map[string]*secrets.SecretReference{
+					"default/ingress-mtls-secret": {
+						Secret: &api_v1.Secret{
+							Type: secrets.SecretTypeCA,
+							Data: map[string][]byte{
+								"ca.crl": []byte("base64crl"),
+							},
+						},
+						Path: ingressMTLSCertPath,
+					},
+				},
+			},
+			context: "spec",
+			expected: policiesCfg{
+				IngressMTLS: &version2.IngressMTLS{
+					ClientCert:   ingressMTLSCertPath,
+					ClientCrl:    ingressMTLSCrlPath,
+					VerifyClient: "on",
+					VerifyDepth:  1,
+				},
+				ErrorReturn: nil,
+			},
+			expectedWarnings: Warnings{
+				nil: {
+					`Both ca.crl in the Secret and ingressMTLS.crlFileName fields cannot be used. ca.crl in default/ingress-mtls-secret will be ignored and default/ingress-mtls-policy will be applied`,
+				},
+			},
+			expectedOidc: &oidcPolicyCfg{},
+			msg:          "ingress mtls ca.crl and ingressMTLS.Crl set",
 		},
 		{
 			policyRefs: []conf_v1.PolicyReference{
@@ -3807,10 +4385,11 @@ func TestGeneratePoliciesFails(t *testing.T) {
 					},
 					Spec: conf_v1.PolicySpec{
 						OIDC: &conf_v1.OIDC{
-							ClientSecret:  "oidc-secret",
-							AuthEndpoint:  "http://foo.com/bar",
-							TokenEndpoint: "http://foo.com/bar",
-							JWKSURI:       "http://foo.com/bar",
+							ClientSecret:      "oidc-secret",
+							AuthEndpoint:      "http://foo.com/bar",
+							TokenEndpoint:     "http://foo.com/bar",
+							JWKSURI:           "http://foo.com/bar",
+							AccessTokenEnable: true,
 						},
 					},
 				},
@@ -3853,11 +4432,12 @@ func TestGeneratePoliciesFails(t *testing.T) {
 					},
 					Spec: conf_v1.PolicySpec{
 						OIDC: &conf_v1.OIDC{
-							ClientID:      "foo",
-							ClientSecret:  "oidc-secret",
-							AuthEndpoint:  "https://foo.com/auth",
-							TokenEndpoint: "https://foo.com/token",
-							JWKSURI:       "https://foo.com/certs",
+							ClientID:          "foo",
+							ClientSecret:      "oidc-secret",
+							AuthEndpoint:      "https://foo.com/auth",
+							TokenEndpoint:     "https://foo.com/token",
+							JWKSURI:           "https://foo.com/certs",
+							AccessTokenEnable: true,
 						},
 					},
 				},
@@ -3868,11 +4448,12 @@ func TestGeneratePoliciesFails(t *testing.T) {
 					},
 					Spec: conf_v1.PolicySpec{
 						OIDC: &conf_v1.OIDC{
-							ClientID:      "foo",
-							ClientSecret:  "oidc-secret",
-							AuthEndpoint:  "https://bar.com/auth",
-							TokenEndpoint: "https://bar.com/token",
-							JWKSURI:       "https://bar.com/certs",
+							ClientID:          "foo",
+							ClientSecret:      "oidc-secret",
+							AuthEndpoint:      "https://bar.com/auth",
+							TokenEndpoint:     "https://bar.com/token",
+							JWKSURI:           "https://bar.com/certs",
+							AccessTokenEnable: true,
 						},
 					},
 				},
@@ -3892,14 +4473,15 @@ func TestGeneratePoliciesFails(t *testing.T) {
 			context: "route",
 			oidcPolCfg: &oidcPolicyCfg{
 				oidc: &version2.OIDC{
-					AuthEndpoint:   "https://foo.com/auth",
-					TokenEndpoint:  "https://foo.com/token",
-					JwksURI:        "https://foo.com/certs",
-					ClientID:       "foo",
-					ClientSecret:   "super_secret_123",
-					RedirectURI:    "/_codexch",
-					Scope:          "openid",
-					ZoneSyncLeeway: 0,
+					AuthEndpoint:      "https://foo.com/auth",
+					TokenEndpoint:     "https://foo.com/token",
+					JwksURI:           "https://foo.com/certs",
+					ClientID:          "foo",
+					ClientSecret:      "super_secret_123",
+					RedirectURI:       "/_codexch",
+					Scope:             "openid",
+					ZoneSyncLeeway:    0,
+					AccessTokenEnable: true,
 				},
 				key: "default/oidc-policy-1",
 			},
@@ -3915,13 +4497,14 @@ func TestGeneratePoliciesFails(t *testing.T) {
 			},
 			expectedOidc: &oidcPolicyCfg{
 				oidc: &version2.OIDC{
-					AuthEndpoint:  "https://foo.com/auth",
-					TokenEndpoint: "https://foo.com/token",
-					JwksURI:       "https://foo.com/certs",
-					ClientID:      "foo",
-					ClientSecret:  "super_secret_123",
-					RedirectURI:   "/_codexch",
-					Scope:         "openid",
+					AuthEndpoint:      "https://foo.com/auth",
+					TokenEndpoint:     "https://foo.com/token",
+					JwksURI:           "https://foo.com/certs",
+					ClientID:          "foo",
+					ClientSecret:      "super_secret_123",
+					RedirectURI:       "/_codexch",
+					Scope:             "openid",
+					AccessTokenEnable: true,
 				},
 				key: "default/oidc-policy-1",
 			},
@@ -3946,11 +4529,12 @@ func TestGeneratePoliciesFails(t *testing.T) {
 					},
 					Spec: conf_v1.PolicySpec{
 						OIDC: &conf_v1.OIDC{
-							ClientSecret:  "oidc-secret",
-							AuthEndpoint:  "https://foo.com/auth",
-							TokenEndpoint: "https://foo.com/token",
-							JWKSURI:       "https://foo.com/certs",
-							ClientID:      "foo",
+							ClientSecret:      "oidc-secret",
+							AuthEndpoint:      "https://foo.com/auth",
+							TokenEndpoint:     "https://foo.com/token",
+							JWKSURI:           "https://foo.com/certs",
+							ClientID:          "foo",
+							AccessTokenEnable: true,
 						},
 					},
 				},
@@ -3961,11 +4545,12 @@ func TestGeneratePoliciesFails(t *testing.T) {
 					},
 					Spec: conf_v1.PolicySpec{
 						OIDC: &conf_v1.OIDC{
-							ClientSecret:  "oidc-secret",
-							AuthEndpoint:  "https://bar.com/auth",
-							TokenEndpoint: "https://bar.com/token",
-							JWKSURI:       "https://bar.com/certs",
-							ClientID:      "bar",
+							ClientSecret:      "oidc-secret",
+							AuthEndpoint:      "https://bar.com/auth",
+							TokenEndpoint:     "https://bar.com/token",
+							JWKSURI:           "https://bar.com/certs",
+							ClientID:          "bar",
+							AccessTokenEnable: true,
 						},
 					},
 				},
@@ -3993,14 +4578,15 @@ func TestGeneratePoliciesFails(t *testing.T) {
 			},
 			expectedOidc: &oidcPolicyCfg{
 				&version2.OIDC{
-					AuthEndpoint:   "https://foo.com/auth",
-					TokenEndpoint:  "https://foo.com/token",
-					JwksURI:        "https://foo.com/certs",
-					ClientID:       "foo",
-					ClientSecret:   "super_secret_123",
-					RedirectURI:    "/_codexch",
-					Scope:          "openid",
-					ZoneSyncLeeway: 200,
+					AuthEndpoint:      "https://foo.com/auth",
+					TokenEndpoint:     "https://foo.com/token",
+					JwksURI:           "https://foo.com/certs",
+					ClientID:          "foo",
+					ClientSecret:      "super_secret_123",
+					RedirectURI:       "/_codexch",
+					Scope:             "openid",
+					ZoneSyncLeeway:    200,
+					AccessTokenEnable: true,
 				},
 				"default/oidc-policy",
 			},
@@ -5351,7 +5937,7 @@ func TestGenerateSplits(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	upstreamNamer := newUpstreamNamerForVirtualServer(&virtualServer)
+	upstreamNamer := NewUpstreamNamerForVirtualServer(&virtualServer)
 	variableNamer := newVariableNamer(&virtualServer)
 	scIndex := 1
 	cfgParams := ConfigParams{}
@@ -5562,7 +6148,7 @@ func TestGenerateDefaultSplitsConfig(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	upstreamNamer := newUpstreamNamerForVirtualServer(&virtualServer)
+	upstreamNamer := NewUpstreamNamerForVirtualServer(&virtualServer)
 	variableNamer := newVariableNamer(&virtualServer)
 	index := 1
 
@@ -5748,7 +6334,7 @@ func TestGenerateMatchesConfig(t *testing.T) {
 			},
 		},
 	}
-	upstreamNamer := newUpstreamNamerForVirtualServer(&virtualServer)
+	upstreamNamer := NewUpstreamNamerForVirtualServer(&virtualServer)
 	variableNamer := newVariableNamer(&virtualServer)
 	index := 1
 	scIndex := 2
@@ -6130,7 +6716,7 @@ func TestGenerateMatchesConfigWithMultipleSplits(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	upstreamNamer := newUpstreamNamerForVirtualServer(&virtualServer)
+	upstreamNamer := NewUpstreamNamerForVirtualServer(&virtualServer)
 	variableNamer := newVariableNamer(&virtualServer)
 	index := 1
 	scIndex := 2
@@ -6704,6 +7290,7 @@ func TestNewHealthCheckWithDefaults(t *testing.T) {
 		URI:                 "/",
 		Interval:            "5s",
 		Jitter:              "0s",
+		KeepaliveTime:       "60s",
 		Fails:               1,
 		Passes:              1,
 		Headers:             make(map[string]string),
@@ -6732,6 +7319,7 @@ func TestGenerateHealthCheck(t *testing.T) {
 					Path:           "/healthz",
 					Interval:       "5s",
 					Jitter:         "2s",
+					KeepaliveTime:  "120s",
 					Fails:          3,
 					Passes:         2,
 					Port:           8080,
@@ -6761,6 +7349,7 @@ func TestGenerateHealthCheck(t *testing.T) {
 				URI:                 "/healthz",
 				Interval:            "5s",
 				Jitter:              "2s",
+				KeepaliveTime:       "120s",
 				Fails:               3,
 				Passes:              2,
 				Port:                8080,
@@ -6791,6 +7380,7 @@ func TestGenerateHealthCheck(t *testing.T) {
 				URI:                 "/",
 				Interval:            "5s",
 				Jitter:              "0s",
+				KeepaliveTime:       "60s",
 				Fails:               1,
 				Passes:              1,
 				Headers:             make(map[string]string),
@@ -6813,6 +7403,7 @@ func TestGenerateHealthCheck(t *testing.T) {
 				URI:                 "/",
 				Interval:            "5s",
 				Jitter:              "0s",
+				KeepaliveTime:       "60s",
 				Fails:               1,
 				Passes:              1,
 				Headers:             make(map[string]string),
@@ -6831,6 +7422,7 @@ func TestGenerateHealthCheck(t *testing.T) {
 					Enable:         true,
 					Interval:       "1m 5s",
 					Jitter:         "2m 3s",
+					KeepaliveTime:  "1m 6s",
 					ConnectTimeout: "1m 10s",
 					SendTimeout:    "1m 20s",
 					ReadTimeout:    "1m 30s",
@@ -6846,6 +7438,7 @@ func TestGenerateHealthCheck(t *testing.T) {
 				URI:                 "/",
 				Interval:            "1m5s",
 				Jitter:              "2m3s",
+				KeepaliveTime:       "1m6s",
 				Fails:               1,
 				Passes:              1,
 				Headers:             make(map[string]string),
@@ -6873,6 +7466,7 @@ func TestGenerateHealthCheck(t *testing.T) {
 				URI:                 "/",
 				Interval:            "5s",
 				Jitter:              "0s",
+				KeepaliveTime:       "60s",
 				Fails:               1,
 				Passes:              1,
 				Headers:             make(map[string]string),
@@ -6912,6 +7506,7 @@ func TestGenerateGrpcHealthCheck(t *testing.T) {
 					Enable:         true,
 					Interval:       "5s",
 					Jitter:         "2s",
+					KeepaliveTime:  "120s",
 					Fails:          3,
 					Passes:         2,
 					Port:           50051,
@@ -6943,6 +7538,7 @@ func TestGenerateGrpcHealthCheck(t *testing.T) {
 				GRPCPass:            fmt.Sprintf("grpc://%v", upstreamName),
 				Interval:            "5s",
 				Jitter:              "2s",
+				KeepaliveTime:       "120s",
 				Fails:               3,
 				Passes:              2,
 				Port:                50051,
@@ -6975,6 +7571,7 @@ func TestGenerateGrpcHealthCheck(t *testing.T) {
 				GRPCPass:            fmt.Sprintf("grpc://%v", upstreamName),
 				Interval:            "5s",
 				Jitter:              "0s",
+				KeepaliveTime:       "60s",
 				Fails:               1,
 				Passes:              1,
 				Headers:             make(map[string]string),

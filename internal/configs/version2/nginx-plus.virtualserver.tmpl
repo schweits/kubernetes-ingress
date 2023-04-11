@@ -57,9 +57,19 @@ match {{ $m.Name }} {
 {{ end }}
 
 {{ $s := .Server }}
+{{ with $s.JWTAuth }}
+{{ if .KeyCache }}proxy_cache_path /var/cache/nginx/jwks_uri levels=1 keys_zone=jwks_uri:1m max_size=10m; {{ end }}
+{{ end }}
+
+{{ range $l := $s.Locations }}
+{{ with $l.JWTAuth }}
+{{ if .KeyCache }}proxy_cache_path /var/cache/nginx{{ $l.Path }}_jwks_uri levels=1 keys_zone={{ $l.Path }}_jwks_uri:1m max_size=10m; {{ end }}
+{{ end }}
+{{ end }}
+
 server {
     listen 80{{ if $s.ProxyProtocol }} proxy_protocol{{ end }};
-    listen [::]:80{{ if $s.ProxyProtocol }} proxy_protocol{{ end }};
+    {{ if not $s.DisableIPV6 }}listen [::]:80{{ if $s.ProxyProtocol }} proxy_protocol{{ end }};{{ end }}
 
     server_name {{ $s.ServerName }};
     status_zone {{ $s.StatusZone }};
@@ -76,6 +86,7 @@ server {
     set $zone_sync_leeway {{ $oidc.ZoneSyncLeeway }};
 
     set $oidc_authz_endpoint "{{ $oidc.AuthEndpoint }}";
+    set $oidc_authz_extra_args "{{ $oidc.AuthExtraArgs }}";
     set $oidc_token_endpoint "{{ $oidc.TokenEndpoint }}";
     set $oidc_jwt_keyfile "{{ $oidc.JwksURI }}";
     set $oidc_scopes "{{ $oidc.Scope }}";
@@ -91,7 +102,7 @@ server {
     real_ip_header proxy_protocol;
         {{ else }}
     listen 443 ssl{{ if $ssl.HTTP2 }} http2{{ end }}{{ if $s.ProxyProtocol }} proxy_protocol{{ end }};
-    listen [::]:443 ssl{{ if $ssl.HTTP2 }} http2{{ end }}{{ if $s.ProxyProtocol }} proxy_protocol{{ end }};
+    {{ if not $s.DisableIPV6 }}listen [::]:443 ssl{{ if $ssl.HTTP2 }} http2{{ end }}{{ if $s.ProxyProtocol }} proxy_protocol{{ end }};{{ end }}
         {{ end }}
 
         {{ if $ssl.RejectHandshake }}
@@ -104,6 +115,9 @@ server {
 
     {{ with $s.IngressMTLS }}
     ssl_client_certificate {{ .ClientCert }};
+    {{ if .ClientCrl }}
+    ssl_crl {{ .ClientCrl }};
+    {{ end }}
     ssl_verify_client {{ .VerifyClient }};
     ssl_verify_depth {{ .VerifyDepth }};
     {{ end }}
@@ -163,7 +177,32 @@ server {
 
     {{ with $s.JWTAuth }}
     auth_jwt "{{ .Realm }}"{{ if .Token }} token={{ .Token }}{{ end }};
-    auth_jwt_key_file {{ .Secret }};
+    {{ if .Secret}}auth_jwt_key_file {{ .Secret }};{{ end }}
+    {{ if .JwksURI.JwksHost }}
+    {{ if .KeyCache }}auth_jwt_key_cache {{ .KeyCache }};{{ end }}
+    auth_jwt_key_request /_jwks_uri_server;
+
+    location = /_jwks_uri_server {
+        internal;
+        proxy_method GET;
+        proxy_set_header Content-Length "";
+        {{ if .KeyCache }}
+        proxy_cache jwks_uri;
+        proxy_cache_valid 200 12h;
+        {{ end }}
+        {{ with $s.JWTAuth.JwksURI }}
+        proxy_set_header Host {{ .JwksHost }};
+        set $idp_backend {{ .JwksHost }};
+        proxy_pass {{ .JwksScheme}}://$idp_backend{{ if .JwksPort }}:{{ .JwksPort }}{{ end }}{{ .JwksPath }};
+        {{ end }}
+    }
+
+    {{ end }}
+    {{ end }}
+
+    {{ with $s.BasicAuth }}
+    auth_basic {{ printf "%q" .Realm }};
+    auth_basic_user_file {{ .Secret }};
     {{ end }}
 
     {{ with $s.EgressMTLS }}
@@ -188,6 +227,10 @@ server {
     app_protect_enable {{ .Enable }};
         {{ if .ApPolicy }}
     app_protect_policy_file {{ .ApPolicy }};
+        {{ end }}
+
+        {{ if .ApBundle }}
+    app_protect_policy_file {{ .ApBundle }};
         {{ end }}
 
         {{ if .ApSecurityLogEnable }}
@@ -257,7 +300,7 @@ server {
             fails={{ $hc.Fails }} passes={{ $hc.Passes }}{{ if $hc.Match }} match={{ $hc.Match }}{{ end }}
             {{ if $hc.Mandatory }} mandatory{{ if $hc.Persistent }} persistent{{ end }}{{ end }}
             {{ if $hc.GRPCPass }} type=grpc{{ if $hc.GRPCStatus }} grpc_status={{ $hc.GRPCStatus }}{{ end }}
-            {{ if $hc.GRPCService }} grpc_service={{ $hc.GRPCService }}{{ end }}{{ end }};
+            {{ if $hc.GRPCService }} grpc_service={{ $hc.GRPCService }}{{ end }}{{ end }} keepalive_time={{ $hc.KeepaliveTime }};
     }
     {{ end }}
 
@@ -335,7 +378,31 @@ server {
 
         {{ with $l.JWTAuth }}
         auth_jwt "{{ .Realm }}"{{ if .Token }} token={{ .Token }}{{ end }};
-        auth_jwt_key_file {{ .Secret }};
+        {{ if .Secret}}auth_jwt_key_file {{ .Secret }};{{ end }}
+        {{ if .JwksURI.JwksHost }}
+        {{ if .KeyCache }}auth_jwt_key_cache {{ .KeyCache }};{{ end }}
+        auth_jwt_key_request {{ $l.Path }}_jwks_uri;
+
+        location = {{ $l.Path }}_jwks_uri {
+            internal;
+            proxy_method GET;
+            proxy_set_header Content-Length "";
+            {{ if .KeyCache }}
+            proxy_cache {{ $l.Path }}_jwks_uri;
+            proxy_cache_valid 200 12h;
+            {{ end }}
+            {{ with $l.JWTAuth.JwksURI }}
+            proxy_set_header Host {{ .JwksHost }};
+            set $idp_backend {{ .JwksHost }};
+            proxy_pass {{ .JwksScheme}}://$idp_backend{{ if .JwksPort }}:{{ .JwksPort }}{{ end }}{{ .JwksPath }};
+            {{ end }}
+        }
+        {{ end }}
+        {{ end }}
+
+        {{ with $l.BasicAuth }}
+        auth_basic {{ printf "%q" .Realm }};
+        auth_basic_user_file {{ .Secret }};
         {{ end }}
 
         {{ $proxyOrGRPC := "proxy" }}{{ if $l.GRPCPass }}{{ $proxyOrGRPC = "grpc" }}{{ end }}
@@ -363,12 +430,19 @@ server {
         error_page 401 = @do_oidc_flow;
         auth_jwt_key_request /_jwks_uri;
         {{ $proxyOrGRPC }}_set_header username $jwt_claim_sub;
+            {{- if $s.OIDC.AccessTokenEnable }}
+        {{ $proxyOrGRPC }}_set_header Authorization "Bearer $access_token";
+            {{- end }}
         {{ end }}
 
         {{ with $l.WAF }}
         app_protect_enable {{ .Enable }};
             {{ if .ApPolicy }}
         app_protect_policy_file {{ .ApPolicy }};
+            {{ end }}
+
+            {{ if .ApBundle }}
+        app_protect_policy_file {{ .ApBundle }};
             {{ end }}
 
             {{ if .ApSecurityLogEnable }}
@@ -471,14 +545,33 @@ server {
         proxy_set_header Connection $vs_connection_header;
         proxy_pass_request_headers {{ if $l.ProxyPassRequestHeaders }}on{{ else }}off{{ end }};
             {{ end }}
+
+        {{- $custom_headers := $l.ProxySetHeaders | headerListToCIMap }}
+
+        {{- if not ($custom_headers | hasCIKey "X-Real-IP") }}
         {{ $proxyOrGRPC }}_set_header X-Real-IP $remote_addr;
+        {{- end }}
+
+        {{- if not ($custom_headers | hasCIKey "X-Forwarded-For") }}
         {{ $proxyOrGRPC }}_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        {{- end }}
+
+        {{- if not ($custom_headers | hasCIKey "X-Forwarded-Host") }}
         {{ $proxyOrGRPC }}_set_header X-Forwarded-Host $host;
+        {{- end }}
+
+        {{- if not ($custom_headers | hasCIKey "X-Forwarded-Port") }}
         {{ $proxyOrGRPC }}_set_header X-Forwarded-Port $server_port;
+        {{- end }}
+
+        {{- if not ($custom_headers | hasCIKey "X-Forwarded-Proto") }}
         {{ $proxyOrGRPC }}_set_header X-Forwarded-Proto {{ with $s.TLSRedirect }}{{ .BasedOn }}{{ else }}$scheme{{ end }};
-            {{ range $h := $l.ProxySetHeaders }}
+        {{- end }}
+
+        {{- range $h := $l.ProxySetHeaders }}
         {{ $proxyOrGRPC }}_set_header {{ $h.Name }} "{{ $h.Value }}";
-            {{ end }}
+        {{- end }}
+
             {{ range $h := $l.ProxyHideHeaders }}
         {{ $proxyOrGRPC }}_hide_header {{ $h }};
             {{ end }}

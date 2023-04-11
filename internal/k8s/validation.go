@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/nginxinc/kubernetes-ingress/internal/configs"
+	ap_validation "github.com/nginxinc/kubernetes-ingress/pkg/apis/configuration/validation"
 	networking "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -42,6 +43,8 @@ const (
 	proxyBufferSizeAnnotation             = "nginx.org/proxy-buffer-size"
 	proxyMaxTempFileSizeAnnotation        = "nginx.org/proxy-max-temp-file-size"
 	upstreamZoneSizeAnnotation            = "nginx.org/upstream-zone-size"
+	basicAuthSecretAnnotation             = "nginx.org/basic-auth-secret" // #nosec G101
+	basicAuthRealmAnnotation              = "nginx.org/basic-auth-realm"
 	jwtRealmAnnotation                    = "nginx.com/jwt-realm"
 	jwtKeyAnnotation                      = "nginx.com/jwt-key"
 	jwtTokenAnnotation                    = "nginx.com/jwt-token" // #nosec G101
@@ -54,6 +57,9 @@ const (
 	failTimeoutAnnotation                 = "nginx.org/fail-timeout"
 	appProtectEnableAnnotation            = "appprotect.f5.com/app-protect-enable"
 	appProtectSecurityLogEnableAnnotation = "appprotect.f5.com/app-protect-security-log-enable"
+	appProtectPolicyAnnotation            = "appprotect.f5.com/app-protect-policy"
+	appProtectSecurityLogAnnotation       = "appprotect.f5.com/app-protect-security-log"
+	appProtectSecurityLogDestAnnotation   = "appprotect.f5.com/app-protect-security-log-destination"
 	appProtectDosProtectedAnnotation      = "appprotectdos.f5.com/app-protect-dos-resource"
 	internalRouteAnnotation               = "nsm.nginx.com/internal-route"
 	websocketServicesAnnotation           = "nginx.org/websocket-services"
@@ -64,9 +70,19 @@ const (
 )
 
 const (
-	commaDelimiter           = ","
-	annotationValueFmt       = `([^"$\\]|\\[^$])*`
+	commaDelimiter     = ","
+	annotationValueFmt = `([^"$\\]|\\[^$])*`
+	jwtTokenValueFmt   = "\\$" + annotationValueFmt
+)
+
+const (
 	annotationValueFmtErrMsg = `a valid annotation value must have all '"' escaped and must not contain any '$' or end with an unescaped '\'`
+	jwtTokenValueFmtErrMsg   = `a valid annotation value must start with '$', have all '"' escaped, and must not contain any '$' or end with an unescaped '\'`
+)
+
+var (
+	validAnnotationValueRegex         = regexp.MustCompile("^" + annotationValueFmt + "$")
+	validJWTTokenAnnotationValueRegex = regexp.MustCompile("^" + jwtTokenValueFmt + "$")
 )
 
 type annotationValidationContext struct {
@@ -87,8 +103,6 @@ type (
 	annotationValidationConfig map[string][]annotationValidationFunc
 	validatorFunc              func(val string) error
 )
-
-var validAnnotationValueRegex = regexp.MustCompile("^" + annotationValueFmt + "$")
 
 var (
 	// annotationValidations defines the various validations which will be applied in order to each ingress annotation.
@@ -202,6 +216,14 @@ var (
 			validateRequiredAnnotation,
 			validateSizeAnnotation,
 		},
+		basicAuthSecretAnnotation: {
+			validateRequiredAnnotation,
+			validateSecretNameAnnotation,
+		},
+		basicAuthRealmAnnotation: {
+			validateRelatedAnnotation(basicAuthSecretAnnotation, validateNoop),
+			validateRealmAnnotation,
+		},
 		jwtRealmAnnotation: {
 			validatePlusOnlyAnnotation,
 			validateRequiredAnnotation,
@@ -214,6 +236,7 @@ var (
 		},
 		jwtTokenAnnotation: {
 			validatePlusOnlyAnnotation,
+			validateJWTTokenAnnotation,
 		},
 		jwtLoginURLAnnotation: {
 			validatePlusOnlyAnnotation,
@@ -245,13 +268,33 @@ var (
 		},
 		appProtectEnableAnnotation: {
 			validateAppProtectOnlyAnnotation,
+			validatePlusOnlyAnnotation,
 			validateRequiredAnnotation,
 			validateBoolAnnotation,
 		},
 		appProtectSecurityLogEnableAnnotation: {
 			validateAppProtectOnlyAnnotation,
+			validatePlusOnlyAnnotation,
 			validateRequiredAnnotation,
 			validateBoolAnnotation,
+		},
+		appProtectPolicyAnnotation: {
+			validateAppProtectOnlyAnnotation,
+			validatePlusOnlyAnnotation,
+			validateRequiredAnnotation,
+			validateQualifiedName,
+		},
+		appProtectSecurityLogAnnotation: {
+			validateAppProtectOnlyAnnotation,
+			validatePlusOnlyAnnotation,
+			validateRequiredAnnotation,
+			validateAppProtectSecurityLogAnnotation,
+		},
+		appProtectSecurityLogDestAnnotation: {
+			validateAppProtectOnlyAnnotation,
+			validatePlusOnlyAnnotation,
+			validateRequiredAnnotation,
+			validateAppProtectSecurityLogDestAnnotation,
 		},
 		appProtectDosProtectedAnnotation: {
 			validateAppProtectDosOnlyAnnotation,
@@ -331,6 +374,17 @@ func validateJWTRealm(context *annotationValidationContext) field.ErrorList {
 	return allErrs
 }
 
+func validateJWTTokenAnnotation(context *annotationValidationContext) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if !validJWTTokenAnnotationValueRegex.MatchString(context.value) {
+		msg := validation.RegexError(jwtTokenValueFmtErrMsg, jwtTokenValueFmt, "$http_token", "$cookie_auth_token")
+		allErrs = append(allErrs, field.Invalid(context.fieldPath, context.value, msg))
+	}
+
+	return allErrs
+}
+
 func validateHTTPHeadersAnnotation(context *annotationValidationContext) field.ErrorList {
 	var allErrs field.ErrorList
 	headers := strings.Split(context.value, commaDelimiter)
@@ -383,6 +437,35 @@ func validateIngress(
 		allErrs = append(allErrs, validateMinionSpec(&ing.Spec, field.NewPath("spec"))...)
 	}
 
+	if isChallengeIngress(ing) {
+		allErrs = append(allErrs, validateChallengeIngress(&ing.Spec, field.NewPath("spec"))...)
+	}
+
+	return allErrs
+}
+
+func validateChallengeIngress(spec *networking.IngressSpec, fieldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if spec.Rules == nil || len(spec.Rules) != 1 {
+		allErrs = append(allErrs, field.Forbidden(fieldPath.Child("rules"), "challenge Ingress must have exactly 1 rule defined"))
+		return allErrs
+	}
+	r := spec.Rules[0]
+
+	if r.HTTP == nil || r.HTTP.Paths == nil || len(r.HTTP.Paths) != 1 {
+		allErrs = append(allErrs, field.Forbidden(fieldPath.Child("rules.HTTP.Paths"), "challenge Ingress must have exactly 1 path defined"))
+		return allErrs
+	}
+
+	p := r.HTTP.Paths[0]
+
+	if p.Backend.Service == nil {
+		allErrs = append(allErrs, field.Required(fieldPath.Child("rules.HTTP.Paths[0].Backend.Service"), "challenge Ingress must have a Backend Service defined"))
+	}
+
+	if p.Backend.Service.Port.Name != "" {
+		allErrs = append(allErrs, field.Forbidden(fieldPath.Child("rules.HTTP.Paths[0].Backend.Service.Port.Name"), "challenge Ingress must have a Backend Service Port Number defined, not Name"))
+	}
 	return allErrs
 }
 
@@ -658,11 +741,55 @@ func validateRewriteListAnnotation(context *annotationValidationContext) field.E
 	return allErrs
 }
 
+func validateAppProtectSecurityLogAnnotation(context *annotationValidationContext) field.ErrorList {
+	allErrs := field.ErrorList{}
+	logConf := strings.Split(context.value, ",")
+	for _, logConf := range logConf {
+		err := validation.IsQualifiedName(logConf)
+		if err != nil {
+			allErrs = append(allErrs, field.Invalid(context.fieldPath, context.value, "security log configuration resource name must be qualified name, e.g. namespace/name"))
+		}
+	}
+	return allErrs
+}
+
+func validateAppProtectSecurityLogDestAnnotation(context *annotationValidationContext) field.ErrorList {
+	allErrs := field.ErrorList{}
+	logDsts := strings.Split(context.value, ",")
+	for _, logDst := range logDsts {
+		err := ap_validation.ValidateAppProtectLogDestination(logDst)
+		if err != nil {
+			errorMsg := fmt.Sprintf("Error Validating App Protect Log Destination Config: %v", err)
+			allErrs = append(allErrs, field.Invalid(context.fieldPath, context.value, errorMsg))
+		}
+	}
+	return allErrs
+}
+
 func validateSnippetsAnnotation(context *annotationValidationContext) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if !context.snippetsEnabled {
 		return append(allErrs, field.Forbidden(context.fieldPath, "snippet specified but snippets feature is not enabled"))
+	}
+	return allErrs
+}
+
+func validateSecretNameAnnotation(context *annotationValidationContext) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if msgs := validation.IsDNS1123Subdomain(context.value); msgs != nil {
+		for _, msg := range msgs {
+			allErrs = append(allErrs, field.Invalid(context.fieldPath, context.value, msg))
+		}
+		return allErrs
+	}
+	return allErrs
+}
+
+func validateRealmAnnotation(context *annotationValidationContext) field.ErrorList {
+	allErrs := field.ErrorList{}
+	if err := validateIsValidRealm(context.value); err != nil {
+		return append(allErrs, field.Invalid(context.fieldPath, context.value, err.Error()))
 	}
 	return allErrs
 }
@@ -683,6 +810,19 @@ func validateIsTrue(v string) error {
 	return nil
 }
 
+func validateNoop(_ string) error {
+	return nil
+}
+
+var realmFmtRegexp = regexp.MustCompile(`^([^"$\\]|\\[^$])*$`)
+
+func validateIsValidRealm(v string) error {
+	if !realmFmtRegexp.MatchString(v) {
+		return errors.New(`a valid realm must have all '"' escaped and must not contain any '$' or end with an unescaped '\'`)
+	}
+	return nil
+}
+
 func validateIngressSpec(spec *networking.IngressSpec, fieldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
@@ -690,7 +830,7 @@ func validateIngressSpec(spec *networking.IngressSpec, fieldPath *field.Path) fi
 		allErrs = append(allErrs, validateBackend(spec.DefaultBackend, fieldPath.Child("defaultBackend"))...)
 	}
 
-	allHosts := sets.String{}
+	allHosts := sets.Set[string]{}
 
 	if len(spec.Rules) == 0 {
 		return append(allErrs, field.Required(fieldPath.Child("rules"), ""))
@@ -714,6 +854,7 @@ func validateIngressSpec(spec *networking.IngressSpec, fieldPath *field.Path) fi
 		for _, path := range r.HTTP.Paths {
 			idxPath := idxRule.Child("http").Child("path").Index(i)
 
+			allErrs = append(allErrs, validatePath(path.Path, path.PathType, idxPath.Child("path"))...)
 			allErrs = append(allErrs, validateBackend(&path.Backend, idxPath.Child("backend"))...)
 		}
 	}
@@ -726,6 +867,108 @@ func validateBackend(backend *networking.IngressBackend, fieldPath *field.Path) 
 
 	if backend.Resource != nil {
 		return append(allErrs, field.Forbidden(fieldPath.Child("resource"), "resource backends are not supported"))
+	}
+
+	return allErrs
+}
+
+const (
+	pathFmt    = `/[^\s;]*`
+	pathErrMsg = "must start with / and must not include any whitespace character or `;`"
+)
+
+var pathRegexp = regexp.MustCompile("^" + pathFmt + "$")
+
+func validatePath(path string, pathType *networking.PathType, fieldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if path == "" && pathType != nil && *pathType == networking.PathTypeImplementationSpecific {
+		// No path defined - no further validation needed.
+		// Path is not required for ImplementationSpecific PathType - it will default to /.
+		return allErrs
+	}
+
+	if path == "" {
+		return append(allErrs, field.Required(fieldPath, "path is required for Exact and Prefix PathTypes"))
+	}
+
+	if !pathRegexp.MatchString(path) {
+		msg := validation.RegexError(pathErrMsg, pathFmt, "/", "/path", "/path/subpath-123")
+		return append(allErrs, field.Invalid(fieldPath, path, msg))
+	}
+
+	allErrs = append(allErrs, validateRegexPath(path, fieldPath)...)
+	allErrs = append(allErrs, validateCurlyBraces(path, fieldPath)...)
+	allErrs = append(allErrs, validateIllegalKeywords(path, fieldPath)...)
+
+	return allErrs
+}
+
+func validateRegexPath(path string, fieldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if _, err := regexp.Compile(path); err != nil {
+		return append(allErrs, field.Invalid(fieldPath, path, fmt.Sprintf("must be a valid regular expression: %v", err)))
+	}
+
+	if err := ValidateEscapedString(path, "*.jpg", "^/images/image_*.png$"); err != nil {
+		return append(allErrs, field.Invalid(fieldPath, path, err.Error()))
+	}
+
+	return allErrs
+}
+
+const (
+	curlyBracesFmt = `\{(.*?)\}`
+	alphabetFmt    = `[A-Za-z]`
+	curlyBracesMsg = `must not include curly braces containing alphabetical characters`
+)
+
+var (
+	curlyBracesFmtRegexp = regexp.MustCompile(curlyBracesFmt)
+	alphabetFmtRegexp    = regexp.MustCompile(alphabetFmt)
+)
+
+func validateCurlyBraces(path string, fieldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	bracesContents := curlyBracesFmtRegexp.FindAllStringSubmatch(path, -1)
+	for _, v := range bracesContents {
+		if alphabetFmtRegexp.MatchString(v[1]) {
+			return append(allErrs, field.Invalid(fieldPath, path, curlyBracesMsg))
+		}
+	}
+	return allErrs
+}
+
+const (
+	escapedStringsFmt    = `([^"\\]|\\.)*`
+	escapedStringsErrMsg = `must have all '"' (double quotes) escaped and must not end with an unescaped '\' (backslash)`
+)
+
+var escapedStringsFmtRegexp = regexp.MustCompile("^" + escapedStringsFmt + "$")
+
+// ValidateEscapedString validates an escaped string.
+func ValidateEscapedString(body string, examples ...string) error {
+	if !escapedStringsFmtRegexp.MatchString(body) {
+		msg := validation.RegexError(escapedStringsErrMsg, escapedStringsFmt, examples...)
+		return fmt.Errorf(msg)
+	}
+	return nil
+}
+
+const (
+	illegalKeywordFmt    = `/etc/|/root|/var|\\n|\\r`
+	illegalKeywordErrMsg = `must not contain invalid paths`
+)
+
+var illegalKeywordFmtRegexp = regexp.MustCompile("^" + illegalKeywordFmt + "$")
+
+func validateIllegalKeywords(path string, fieldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if illegalKeywordFmtRegexp.MatchString(path) {
+		return append(allErrs, field.Invalid(fieldPath, path, illegalKeywordErrMsg))
 	}
 
 	return allErrs

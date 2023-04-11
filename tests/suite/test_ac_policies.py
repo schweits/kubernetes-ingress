@@ -1,26 +1,21 @@
-import pytest, requests, json
-from kubernetes.client.rest import ApiException
-from suite.resources_utils import (
-    wait_before_test,
-    replace_configmap_from_yaml,
+import pytest
+import requests
+from settings import DEPLOYMENTS, TEST_DATA
+from suite.utils.custom_resources_utils import read_custom_resource
+from suite.utils.policy_resources_utils import create_policy_from_yaml, delete_policy
+from suite.utils.resources_utils import (
+    ensure_response_from_backend,
     get_last_reload_time,
     get_test_file_name,
+    replace_configmap_from_yaml,
+    wait_before_test,
     write_to_json,
 )
-from suite.custom_resources_utils import (
-    read_custom_resource,
-)
-from suite.vs_vsr_resources_utils import (
-    delete_virtual_server,
+from suite.utils.vs_vsr_resources_utils import (
     create_virtual_server_from_yaml,
+    delete_virtual_server,
     patch_virtual_server_from_yaml,
 )
-from suite.policy_resources_utils import (
-    create_policy_from_yaml,
-    delete_policy,
-    read_policy,
-)
-from settings import TEST_DATA, DEPLOYMENTS
 
 std_cm_src = f"{DEPLOYMENTS}/common/nginx-config.yaml"
 test_cm_src = f"{TEST_DATA}/access-control/configmap/nginx-config.yaml"
@@ -34,15 +29,9 @@ invalid_pol_src = f"{TEST_DATA}/access-control/policies/access-control-policy-in
 invalid_vs_src = f"{TEST_DATA}/access-control/spec/virtual-server-invalid.yaml"
 allow_vs_src_route = f"{TEST_DATA}/access-control/route-subroute/virtual-server-allow-route.yaml"
 deny_vs_src_route = f"{TEST_DATA}/access-control/route-subroute/virtual-server-deny-route.yaml"
-invalid_vs_src_route = (
-    f"{TEST_DATA}/access-control/route-subroute/virtual-server-invalid-route.yaml"
-)
-override_vs_src_route = (
-    f"{TEST_DATA}/access-control/route-subroute/virtual-server-override-route.yaml"
-)
-override_vs_spec_route_src = (
-    f"{TEST_DATA}/access-control/route-subroute/virtual-server-override-spec-route.yaml"
-)
+invalid_vs_src_route = f"{TEST_DATA}/access-control/route-subroute/virtual-server-invalid-route.yaml"
+override_vs_src_route = f"{TEST_DATA}/access-control/route-subroute/virtual-server-override-route.yaml"
+override_vs_spec_route_src = f"{TEST_DATA}/access-control/route-subroute/virtual-server-override-spec-route.yaml"
 reload_times = {}
 
 
@@ -63,17 +52,15 @@ def config_setup(request, kube_apis, ingress_controller_prerequisites) -> None:
     )
 
     def fin():
-        print(f"------------- Restore ConfigMap --------------")
-        replace_configmap_from_yaml(
-            kube_apis.v1,
-            ingress_controller_prerequisites.config_map["metadata"]["name"],
-            ingress_controller_prerequisites.namespace,
-            std_cm_src,
-        )
-        write_to_json(
-            f"reload-{get_test_file_name(request.node.fspath)}.json",
-            reload_times
-        )
+        if request.config.getoption("--skip-fixture-teardown") == "no":
+            print(f"------------- Restore ConfigMap --------------")
+            replace_configmap_from_yaml(
+                kube_apis.v1,
+                ingress_controller_prerequisites.config_map["metadata"]["name"],
+                ingress_controller_prerequisites.namespace,
+                std_cm_src,
+            )
+            write_to_json(f"reload-{get_test_file_name(request.node.fspath)}.json", reload_times)
 
     request.addfinalizer(fin)
 
@@ -104,12 +91,8 @@ class TestAccessControlPoliciesVs:
         """
         Restore VirtualServer without policy spec
         """
-        delete_virtual_server(
-            kube_apis.custom_objects, virtual_server_setup.vs_name, virtual_server_setup.namespace
-        )
-        create_virtual_server_from_yaml(
-            kube_apis.custom_objects, std_vs_src, virtual_server_setup.namespace
-        )
+        delete_virtual_server(kube_apis.custom_objects, virtual_server_setup.vs_name, virtual_server_setup.namespace)
+        create_virtual_server_from_yaml(kube_apis.custom_objects, std_vs_src, virtual_server_setup.namespace)
         wait_before_test()
 
     @pytest.mark.parametrize("src", [deny_vs_src, deny_vs_src_route])
@@ -127,6 +110,9 @@ class TestAccessControlPoliciesVs:
         """
         Test if ip (10.0.0.1) block-listing is working: default(no policy) -> deny
         """
+        ensure_response_from_backend(
+            virtual_server_setup.backend_1_url, virtual_server_setup.vs_host, {"X-Real-IP": "10.0.0.1"}
+        )
         resp = requests.get(
             virtual_server_setup.backend_1_url,
             headers={"host": virtual_server_setup.vs_host, "X-Real-IP": "10.0.0.1"},
@@ -145,9 +131,7 @@ class TestAccessControlPoliciesVs:
         )
         wait_before_test()
 
-        policy_info = read_custom_resource(
-            kube_apis.custom_objects, test_namespace, "policies", pol_name
-        )
+        policy_info = read_custom_resource(kube_apis.custom_objects, test_namespace, "policies", pol_name)
         print(f"\nUse IP listed in deny block: 10.0.0.1")
         resp1 = requests.get(
             virtual_server_setup.backend_1_url,
@@ -195,6 +179,9 @@ class TestAccessControlPoliciesVs:
         """
         Test if ip (10.0.0.1) allow-listing is working: default(no policy) -> allow
         """
+        ensure_response_from_backend(
+            virtual_server_setup.backend_1_url, virtual_server_setup.vs_host, {"X-Real-IP": "10.0.0.1"}
+        )
         resp = requests.get(
             virtual_server_setup.backend_1_url,
             headers={"host": virtual_server_setup.vs_host, "X-Real-IP": "10.0.0.1"},
@@ -212,9 +199,7 @@ class TestAccessControlPoliciesVs:
         )
         wait_before_test()
 
-        policy_info = read_custom_resource(
-            kube_apis.custom_objects, test_namespace, "policies", pol_name
-        )
+        policy_info = read_custom_resource(kube_apis.custom_objects, test_namespace, "policies", pol_name)
         print(f"\nUse IP listed in allow block: 10.0.0.1")
         resp1 = requests.get(
             virtual_server_setup.backend_1_url,
@@ -257,6 +242,9 @@ class TestAccessControlPoliciesVs:
         """
         Test if ip allow-listing overrides block-listing: default(no policy) -> deny and allow
         """
+        ensure_response_from_backend(
+            virtual_server_setup.backend_1_url, virtual_server_setup.vs_host, {"X-Real-IP": "10.0.0.1"}
+        )
         resp = requests.get(
             virtual_server_setup.backend_1_url,
             headers={"host": virtual_server_setup.vs_host, "X-Real-IP": "10.0.0.1"},
@@ -265,13 +253,9 @@ class TestAccessControlPoliciesVs:
         assert resp.status_code == 200
 
         print(f"Create deny policy")
-        deny_pol_name = create_policy_from_yaml(
-            kube_apis.custom_objects, deny_pol_src, test_namespace
-        )
+        deny_pol_name = create_policy_from_yaml(kube_apis.custom_objects, deny_pol_src, test_namespace)
         print(f"Create allow policy")
-        allow_pol_name = create_policy_from_yaml(
-            kube_apis.custom_objects, allow_pol_src, test_namespace
-        )
+        allow_pol_name = create_policy_from_yaml(kube_apis.custom_objects, allow_pol_src, test_namespace)
         patch_virtual_server_from_yaml(
             kube_apis.custom_objects,
             virtual_server_setup.vs_name,
@@ -306,6 +290,9 @@ class TestAccessControlPoliciesVs:
         """
         Test if invalid policy is applied then response is 500
         """
+        ensure_response_from_backend(
+            virtual_server_setup.backend_1_url, virtual_server_setup.vs_host, {"X-Real-IP": "10.0.0.1"}
+        )
         resp = requests.get(
             virtual_server_setup.backend_1_url,
             headers={"host": virtual_server_setup.vs_host, "X-Real-IP": "10.0.0.1"},
@@ -314,9 +301,7 @@ class TestAccessControlPoliciesVs:
         assert resp.status_code == 200
 
         print(f"Create invalid policy")
-        invalid_pol_name = create_policy_from_yaml(
-            kube_apis.custom_objects, invalid_pol_src, test_namespace
-        )
+        invalid_pol_name = create_policy_from_yaml(kube_apis.custom_objects, invalid_pol_src, test_namespace)
         patch_virtual_server_from_yaml(
             kube_apis.custom_objects,
             virtual_server_setup.vs_name,
@@ -337,9 +322,7 @@ class TestAccessControlPoliciesVs:
             "virtualservers",
             virtual_server_setup.vs_name,
         )
-        policy_info = read_custom_resource(
-            kube_apis.custom_objects, test_namespace, "policies", invalid_pol_name
-        )
+        policy_info = read_custom_resource(kube_apis.custom_objects, test_namespace, "policies", invalid_pol_name)
         delete_policy(kube_apis.custom_objects, invalid_pol_name, test_namespace)
         self.restore_default_vs(kube_apis, virtual_server_setup)
 
@@ -349,10 +332,7 @@ class TestAccessControlPoliciesVs:
             and policy_info["status"]["reason"] == "Rejected"
             and policy_info["status"]["state"] == "Invalid"
         )
-        assert (
-            vs_info["status"]["state"] == "Warning"
-            and vs_info["status"]["reason"] == "AddedOrUpdatedWithWarning"
-        )
+        assert vs_info["status"]["state"] == "Warning" and vs_info["status"]["reason"] == "AddedOrUpdatedWithWarning"
 
     @pytest.mark.parametrize("src", [deny_vs_src, deny_vs_src_route])
     def test_deleted_policy(
@@ -367,6 +347,9 @@ class TestAccessControlPoliciesVs:
         """
         Test if valid policy is deleted then response is 500
         """
+        ensure_response_from_backend(
+            virtual_server_setup.backend_1_url, virtual_server_setup.vs_host, {"X-Real-IP": "10.0.0.1"}
+        )
         resp = requests.get(
             virtual_server_setup.backend_1_url,
             headers={"host": virtual_server_setup.vs_host, "X-Real-IP": "10.0.0.1"},
@@ -409,10 +392,7 @@ class TestAccessControlPoliciesVs:
         self.restore_default_vs(kube_apis, virtual_server_setup)
 
         assert resp.status_code == 500 and "500 Internal Server Error" in resp.text
-        assert (
-            vs_info["status"]["state"] == "Warning"
-            and vs_info["status"]["reason"] == "AddedOrUpdatedWithWarning"
-        )
+        assert vs_info["status"]["state"] == "Warning" and vs_info["status"]["reason"] == "AddedOrUpdatedWithWarning"
 
     def test_route_override_spec(
         self,
@@ -425,6 +405,9 @@ class TestAccessControlPoliciesVs:
         """
         Test allow policy specified under routes overrides block in spec
         """
+        ensure_response_from_backend(
+            virtual_server_setup.backend_1_url, virtual_server_setup.vs_host, {"X-Real-IP": "10.0.0.1"}
+        )
         resp = requests.get(
             virtual_server_setup.backend_1_url,
             headers={"host": virtual_server_setup.vs_host, "X-Real-IP": "10.0.0.1"},
@@ -433,13 +416,9 @@ class TestAccessControlPoliciesVs:
         assert resp.status_code == 200
 
         print(f"Create deny policy")
-        deny_pol_name = create_policy_from_yaml(
-            kube_apis.custom_objects, deny_pol_src, test_namespace
-        )
+        deny_pol_name = create_policy_from_yaml(kube_apis.custom_objects, deny_pol_src, test_namespace)
         print(f"Create allow policy")
-        allow_pol_name = create_policy_from_yaml(
-            kube_apis.custom_objects, allow_pol_src, test_namespace
-        )
+        allow_pol_name = create_policy_from_yaml(kube_apis.custom_objects, allow_pol_src, test_namespace)
 
         patch_virtual_server_from_yaml(
             kube_apis.custom_objects,

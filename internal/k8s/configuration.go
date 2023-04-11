@@ -358,6 +358,8 @@ type Configuration struct {
 	internalRoutesEnabled   bool
 	isTLSPassthroughEnabled bool
 	snippetsEnabled         bool
+	isCertManagerEnabled    bool
+	isIPV6Disabled          bool
 
 	lock sync.RWMutex
 }
@@ -374,6 +376,8 @@ func NewConfiguration(
 	transportServerValidator *validation.TransportServerValidator,
 	isTLSPassthroughEnabled bool,
 	snippetsEnabled bool,
+	isCertManagerEnabled bool,
+	isIPV6Disabled bool,
 ) *Configuration {
 	return &Configuration{
 		hosts:                        make(map[string]Resource),
@@ -400,6 +404,8 @@ func NewConfiguration(
 		internalRoutesEnabled:        internalRoutesEnabled,
 		isTLSPassthroughEnabled:      isTLSPassthroughEnabled,
 		snippetsEnabled:              snippetsEnabled,
+		isCertManagerEnabled:         isCertManagerEnabled,
+		isIPV6Disabled:               isIPV6Disabled,
 	}
 }
 
@@ -1279,6 +1285,7 @@ func squashResourceChanges(changes []ResourceChange) []ResourceChange {
 func (c *Configuration) buildHostsAndResources() (newHosts map[string]Resource, newResources map[string]Resource) {
 	newHosts = make(map[string]Resource)
 	newResources = make(map[string]Resource)
+	var challengesVSR []*conf_v1.VirtualServerRoute
 
 	// Step 1 - Build hosts from Ingress resources
 
@@ -1290,6 +1297,14 @@ func (c *Configuration) buildHostsAndResources() (newHosts map[string]Resource, 
 		}
 
 		var resource *IngressConfiguration
+
+		if val := c.isChallengeIngress(ing); val {
+			vsr := c.convertIngressToVSR(ing)
+			if vsr != nil {
+				challengesVSR = append(challengesVSR, vsr)
+				continue
+			}
+		}
 
 		if isMaster(ing) {
 			minions, childWarnings := c.buildMinionConfigs(ing.Spec.Rules[0].Host)
@@ -1324,6 +1339,11 @@ func (c *Configuration) buildHostsAndResources() (newHosts map[string]Resource, 
 		vs := c.virtualServers[key]
 
 		vsrs, warnings := c.buildVirtualServerRoutes(vs)
+		for _, vsr := range challengesVSR {
+			if vs.Spec.Host == vsr.Spec.Host {
+				vsrs = append(vsrs, vsr)
+			}
+		}
 		resource := NewVirtualServerConfiguration(vs, vsrs, warnings)
 
 		newResources[resource.GetKeyWithKind()] = resource
@@ -1375,6 +1395,58 @@ func (c *Configuration) buildHostsAndResources() (newHosts map[string]Resource, 
 	}
 
 	return newHosts, newResources
+}
+
+func (c *Configuration) isChallengeIngress(ing *networking.Ingress) bool {
+	if !c.isCertManagerEnabled {
+		return false
+	}
+	return ing.Labels["acme.cert-manager.io/http01-solver"] == "true"
+}
+
+func (c *Configuration) convertIngressToVSR(ing *networking.Ingress) *conf_v1.VirtualServerRoute {
+	rule := ing.Spec.Rules[0]
+
+	if !c.isChallengeIngressOwnerVs(rule.Host) {
+		return nil
+	}
+
+	vs := &conf_v1.VirtualServerRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: ing.Namespace,
+			Name:      ing.Name,
+		},
+		Spec: conf_v1.VirtualServerRouteSpec{
+			Host: rule.Host,
+			Upstreams: []conf_v1.Upstream{
+				{
+					Name:    "challenge",
+					Service: rule.HTTP.Paths[0].Backend.Service.Name,
+					Port:    uint16(rule.HTTP.Paths[0].Backend.Service.Port.Number),
+				},
+			},
+			Subroutes: []conf_v1.Route{
+				{
+					Path: rule.HTTP.Paths[0].Path,
+					Action: &conf_v1.Action{
+						Pass: "challenge",
+					},
+				},
+			},
+		},
+	}
+
+	return vs
+}
+
+func (c *Configuration) isChallengeIngressOwnerVs(host string) bool {
+	for _, key := range getSortedVirtualServerKeys(c.virtualServers) {
+		vs := c.virtualServers[key]
+		if host == vs.Spec.Host {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Configuration) buildMinionConfigs(masterHost string) ([]*MinionConfiguration, map[string][]string) {

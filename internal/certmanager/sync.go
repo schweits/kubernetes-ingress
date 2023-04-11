@@ -60,7 +60,7 @@ type SyncFn func(context.Context, *vsapi.VirtualServer) error
 func SyncFnFor(
 	rec record.EventRecorder,
 	cmClient clientset.Interface,
-	cmLister cmlisters.CertificateLister,
+	ig map[string]*namespacedInformer,
 ) SyncFn {
 	return func(ctx context.Context, vs *vsapi.VirtualServer) error {
 		var err error
@@ -75,7 +75,9 @@ func SyncFnFor(
 			return err
 		}
 
-		newCrts, updateCrts, err := buildCertificates(cmLister, vs, issuerName, issuerKind, issuerGroup)
+		nsi := getNamespacedInformer(vs.GetNamespace(), ig)
+
+		newCrts, updateCrts, err := buildCertificates(nsi.cmLister, vs, issuerName, issuerKind, issuerGroup)
 		if err != nil {
 			glog.Errorf("Incorrect cert-manager configuration for VirtualServer resource: %v", err)
 			rec.Eventf(vs, corev1.EventTypeWarning, reasonBadConfig, "Incorrect cert-manager configuration for VirtualServer resource: %s",
@@ -104,8 +106,10 @@ func SyncFnFor(
 			}
 			rec.Eventf(vs, corev1.EventTypeNormal, reasonUpdateCertificate, "Successfully updated Certificate %q", crt.Name)
 		}
+		var certs []*cmapi.Certificate
 
-		certs, err := cmLister.Certificates(vs.GetNamespace()).List(labels.Everything())
+		certs, err = nsi.cmLister.Certificates(vs.GetNamespace()).List(labels.Everything())
+
 		if err != nil {
 			return err
 		}
@@ -131,16 +135,17 @@ func buildCertificates(
 ) (newCert, update []*cmapi.Certificate, _ error) {
 	var newCrts []*cmapi.Certificate
 	var updateCrts []*cmapi.Certificate
+	var existingCrt *cmapi.Certificate
+	var err error
 
-	var hosts []string
-	hosts = append(hosts, vs.Spec.Host)
+	existingCrt, err = cmLister.Certificates(vs.Namespace).Get(vs.Spec.TLS.Secret)
 
-	existingCrt, err := cmLister.Certificates(vs.Namespace).Get(vs.Spec.TLS.Secret)
 	if !apierrors.IsNotFound(err) && err != nil {
 		return nil, nil, err
 	}
 
 	var controllerGVK schema.GroupVersionKind = vsGVK
+	hosts := []string{vs.Spec.Host}
 
 	crt := &cmapi.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
@@ -263,10 +268,10 @@ func certNeedsUpdate(a, b *cmapi.Certificate) bool {
 // Certificate created for the given VirtualServer resource. We look up the following
 // VS TLS Cert-Manager fields:
 //
-//   cluster-issuer
-//   issuer
-//   issuer-kind
-//   issuer-group
+//	cluster-issuer
+//	issuer
+//	issuer-kind
+//	issuer-group
 func issuerForVirtualServer(vs *vsapi.VirtualServer) (name, kind, group string, err error) {
 	var errs []string
 	vsCmSpec := vs.Spec.TLS.CertManager

@@ -156,6 +156,7 @@ func generateNginxCfg(ingEx *IngressEx, apResources *AppProtectResources, dosRes
 			AppProtectEnable:      cfgParams.AppProtectEnable,
 			AppProtectLogEnable:   cfgParams.AppProtectLogEnable,
 			SpiffeCerts:           cfgParams.SpiffeServerCerts,
+			DisableIPV6:           staticParams.DisableIPV6,
 		}
 
 		warnings := addSSLConfig(&server, ingEx.Ingress, rule.Host, ingEx.Ingress.Spec.TLS, ingEx.SecretRefs, isWildcardEnabled)
@@ -184,6 +185,12 @@ func generateNginxCfg(ingEx *IngressEx, apResources *AppProtectResources, dosRes
 			if redirectLoc != nil {
 				server.JWTRedirectLocations = append(server.JWTRedirectLocations, *redirectLoc)
 			}
+			allWarnings.Add(warnings)
+		}
+
+		if !isMinion && cfgParams.BasicAuthSecret != "" {
+			basicAuth, warnings := generateBasicAuthConfig(ingEx.Ingress, ingEx.SecretRefs, &cfgParams)
+			server.BasicAuth = basicAuth
 			allWarnings.Add(warnings)
 		}
 
@@ -234,6 +241,12 @@ func generateNginxCfg(ingEx *IngressEx, apResources *AppProtectResources, dosRes
 				if redirectLoc != nil {
 					server.JWTRedirectLocations = append(server.JWTRedirectLocations, *redirectLoc)
 				}
+				allWarnings.Add(warnings)
+			}
+
+			if isMinion && cfgParams.BasicAuthSecret != "" {
+				basicAuth, warnings := generateBasicAuthConfig(ingEx.Ingress, ingEx.SecretRefs, &cfgParams)
+				loc.BasicAuth = basicAuth
 				allWarnings.Add(warnings)
 			}
 
@@ -325,6 +338,28 @@ func generateJWTConfig(owner runtime.Object, secretRefs map[string]*secrets.Secr
 	}
 
 	return jwtAuth, redirectLocation, warnings
+}
+
+func generateBasicAuthConfig(owner runtime.Object, secretRefs map[string]*secrets.SecretReference, cfgParams *ConfigParams) (*version1.BasicAuth, Warnings) {
+	warnings := newWarnings()
+
+	secretRef := secretRefs[cfgParams.BasicAuthSecret]
+	var secretType api_v1.SecretType
+	if secretRef.Secret != nil {
+		secretType = secretRef.Secret.Type
+	}
+	if secretType != "" && secretType != secrets.SecretTypeHtpasswd {
+		warnings.AddWarningf(owner, "Basic auth secret %s is of a wrong type '%s', must be '%s'", cfgParams.BasicAuthSecret, secretType, secrets.SecretTypeHtpasswd)
+	} else if secretRef.Error != nil {
+		warnings.AddWarningf(owner, "Basic auth secret %s is invalid: %v", cfgParams.BasicAuthSecret, secretRef.Error)
+	}
+
+	basicAuth := &version1.BasicAuth{
+		Secret: secretRef.Path,
+		Realm:  cfgParams.BasicAuthRealm,
+	}
+
+	return basicAuth, warnings
 }
 
 func addSSLConfig(server *version1.Server, owner runtime.Object, host string, ingressTLS []networking.IngressTLS,

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	discovery_v1 "k8s.io/api/discovery/v1"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/nginxinc/kubernetes-ingress/internal/configs"
 	"github.com/nginxinc/kubernetes-ingress/internal/configs/version1"
@@ -19,7 +21,6 @@ import (
 	conf_v1 "github.com/nginxinc/kubernetes-ingress/pkg/apis/configuration/v1"
 	conf_v1alpha1 "github.com/nginxinc/kubernetes-ingress/pkg/apis/configuration/v1alpha1"
 	api_v1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -221,43 +222,43 @@ func TestIngressClassForCustomResources(t *testing.T) {
 
 func TestComparePorts(t *testing.T) {
 	scenarios := []struct {
-		sp       v1.ServicePort
-		cp       v1.ContainerPort
+		sp       api_v1.ServicePort
+		cp       api_v1.ContainerPort
 		expected bool
 	}{
 		{
 			// match TargetPort.strval and Protocol
-			v1.ServicePort{
+			api_v1.ServicePort{
 				TargetPort: intstr.FromString("name"),
-				Protocol:   v1.ProtocolTCP,
+				Protocol:   api_v1.ProtocolTCP,
 			},
-			v1.ContainerPort{
+			api_v1.ContainerPort{
 				Name:          "name",
-				Protocol:      v1.ProtocolTCP,
+				Protocol:      api_v1.ProtocolTCP,
 				ContainerPort: 80,
 			},
 			true,
 		},
 		{
 			// don't match Name and Protocol
-			v1.ServicePort{
+			api_v1.ServicePort{
 				Name:     "name",
-				Protocol: v1.ProtocolTCP,
+				Protocol: api_v1.ProtocolTCP,
 			},
-			v1.ContainerPort{
+			api_v1.ContainerPort{
 				Name:          "name",
-				Protocol:      v1.ProtocolTCP,
+				Protocol:      api_v1.ProtocolTCP,
 				ContainerPort: 80,
 			},
 			false,
 		},
 		{
 			// TargetPort intval mismatch, don't match by TargetPort.Name
-			v1.ServicePort{
+			api_v1.ServicePort{
 				Name:       "name",
 				TargetPort: intstr.FromInt(80),
 			},
-			v1.ContainerPort{
+			api_v1.ContainerPort{
 				Name:          "name",
 				ContainerPort: 81,
 			},
@@ -265,23 +266,23 @@ func TestComparePorts(t *testing.T) {
 		},
 		{
 			// match by TargetPort intval
-			v1.ServicePort{
+			api_v1.ServicePort{
 				TargetPort: intstr.IntOrString{
 					IntVal: 80,
 				},
 			},
-			v1.ContainerPort{
+			api_v1.ContainerPort{
 				ContainerPort: 80,
 			},
 			true,
 		},
 		{
 			// Fall back on ServicePort.Port if TargetPort is empty
-			v1.ServicePort{
+			api_v1.ServicePort{
 				Name: "name",
 				Port: 80,
 			},
-			v1.ContainerPort{
+			api_v1.ContainerPort{
 				Name:          "name",
 				ContainerPort: 80,
 			},
@@ -289,18 +290,18 @@ func TestComparePorts(t *testing.T) {
 		},
 		{
 			// TargetPort intval mismatch
-			v1.ServicePort{
+			api_v1.ServicePort{
 				TargetPort: intstr.FromInt(80),
 			},
-			v1.ContainerPort{
+			api_v1.ContainerPort{
 				ContainerPort: 81,
 			},
 			false,
 		},
 		{
 			// don't match empty ports
-			v1.ServicePort{},
-			v1.ContainerPort{},
+			api_v1.ServicePort{},
+			api_v1.ContainerPort{},
 			false,
 		},
 	}
@@ -313,14 +314,14 @@ func TestComparePorts(t *testing.T) {
 }
 
 func TestFindProbeForPods(t *testing.T) {
-	pods := []*v1.Pod{
+	pods := []*api_v1.Pod{
 		{
-			Spec: v1.PodSpec{
-				Containers: []v1.Container{
+			Spec: api_v1.PodSpec{
+				Containers: []api_v1.Container{
 					{
-						ReadinessProbe: &v1.Probe{
-							ProbeHandler: v1.ProbeHandler{
-								HTTPGet: &v1.HTTPGetAction{
+						ReadinessProbe: &api_v1.Probe{
+							ProbeHandler: api_v1.ProbeHandler{
+								HTTPGet: &api_v1.HTTPGetAction{
 									Path: "/",
 									Host: "asdf.com",
 									Port: intstr.IntOrString{
@@ -330,11 +331,11 @@ func TestFindProbeForPods(t *testing.T) {
 							},
 							PeriodSeconds: 42,
 						},
-						Ports: []v1.ContainerPort{
+						Ports: []api_v1.ContainerPort{
 							{
 								Name:          "name",
 								ContainerPort: 80,
-								Protocol:      v1.ProtocolTCP,
+								Protocol:      api_v1.ProtocolTCP,
 								HostIP:        "1.2.3.4",
 							},
 						},
@@ -343,7 +344,7 @@ func TestFindProbeForPods(t *testing.T) {
 			},
 		},
 	}
-	svcPort := v1.ServicePort{
+	svcPort := api_v1.ServicePort{
 		TargetPort: intstr.FromInt(80),
 	}
 	probe := findProbeForPods(pods, &svcPort)
@@ -351,25 +352,25 @@ func TestFindProbeForPods(t *testing.T) {
 		t.Errorf("ServicePort.TargetPort as int match failed: %+v", probe)
 	}
 
-	svcPort = v1.ServicePort{
+	svcPort = api_v1.ServicePort{
 		TargetPort: intstr.FromString("name"),
-		Protocol:   v1.ProtocolTCP,
+		Protocol:   api_v1.ProtocolTCP,
 	}
 	probe = findProbeForPods(pods, &svcPort)
 	if probe == nil || probe.PeriodSeconds != 42 {
 		t.Errorf("ServicePort.TargetPort as string failed: %+v", probe)
 	}
 
-	svcPort = v1.ServicePort{
+	svcPort = api_v1.ServicePort{
 		TargetPort: intstr.FromInt(80),
-		Protocol:   v1.ProtocolTCP,
+		Protocol:   api_v1.ProtocolTCP,
 	}
 	probe = findProbeForPods(pods, &svcPort)
 	if probe == nil || probe.PeriodSeconds != 42 {
 		t.Errorf("ServicePort.TargetPort as int failed: %+v", probe)
 	}
 
-	svcPort = v1.ServicePort{
+	svcPort = api_v1.ServicePort{
 		Port: 80,
 	}
 	probe = findProbeForPods(pods, &svcPort)
@@ -377,7 +378,7 @@ func TestFindProbeForPods(t *testing.T) {
 		t.Errorf("ServicePort.Port should match if TargetPort is not set: %+v", probe)
 	}
 
-	svcPort = v1.ServicePort{
+	svcPort = api_v1.ServicePort{
 		TargetPort: intstr.FromString("wrong_name"),
 	}
 	probe = findProbeForPods(pods, &svcPort)
@@ -385,7 +386,7 @@ func TestFindProbeForPods(t *testing.T) {
 		t.Errorf("ServicePort.TargetPort should not have matched string: %+v", probe)
 	}
 
-	svcPort = v1.ServicePort{
+	svcPort = api_v1.ServicePort{
 		TargetPort: intstr.FromInt(22),
 	}
 	probe = findProbeForPods(pods, &svcPort)
@@ -393,7 +394,7 @@ func TestFindProbeForPods(t *testing.T) {
 		t.Errorf("ServicePort.TargetPort should not have matched int: %+v", probe)
 	}
 
-	svcPort = v1.ServicePort{
+	svcPort = api_v1.ServicePort{
 		Port: 22,
 	}
 	probe = findProbeForPods(pods, &svcPort)
@@ -411,14 +412,14 @@ func TestGetServicePortForIngressPort(t *testing.T) {
 		configurator:     cnf,
 		metricsCollector: collectors.NewControllerFakeCollector(),
 	}
-	svc := v1.Service{
+	svc := api_v1.Service{
 		TypeMeta: meta_v1.TypeMeta{},
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "coffee-svc",
 			Namespace: "default",
 		},
-		Spec: v1.ServiceSpec{
-			Ports: []v1.ServicePort{
+		Spec: api_v1.ServiceSpec{
+			Ports: []api_v1.ServicePort{
 				{
 					Name:       "foo",
 					Port:       80,
@@ -426,7 +427,7 @@ func TestGetServicePortForIngressPort(t *testing.T) {
 				},
 			},
 		},
-		Status: v1.ServiceStatus{},
+		Status: api_v1.ServiceStatus{},
 	}
 	backendPort := networking.ServiceBackendPort{
 		Name: "foo",
@@ -471,63 +472,74 @@ func TestFormatWarningsMessages(t *testing.T) {
 	}
 }
 
-func TestGetEndpointsBySubselectedPods(t *testing.T) {
-	boolPointer := func(b bool) *bool { return &b }
+func TestGetEndpointsFromEndpointSlices_DuplicateEndpointsInOneEndpointSlice(t *testing.T) {
+	endpointPort := int32(8080)
+
+	lbc := LoadBalancerController{
+		isNginxPlus: true,
+	}
+
+	backendServicePort := networking.ServiceBackendPort{
+		Number: 8080,
+		Name:   "foo",
+	}
+
+	endpointReady := true
+
 	tests := []struct {
-		desc        string
-		targetPort  int32
-		svcEps      v1.Endpoints
-		expectedEps []podEndpoint
+		desc              string
+		svc               api_v1.Service
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		expectedEndpoints []podEndpoint
 	}{
 		{
-			desc:       "find one endpoint",
-			targetPort: 80,
-			expectedEps: []podEndpoint{
+			desc: "duplicate endpoints in an endpointslice",
+			svc: api_v1.Service{
+				TypeMeta: meta_v1.TypeMeta{},
+				ObjectMeta: meta_v1.ObjectMeta{
+					Name:      "coffee-svc",
+					Namespace: "default",
+				},
+				Spec: api_v1.ServiceSpec{
+					Ports: []api_v1.ServicePort{
+						{
+							Name:       "foo",
+							Port:       80,
+							TargetPort: intstr.FromInt(8080),
+						},
+					},
+				},
+				Status: api_v1.ServiceStatus{},
+			},
+			expectedEndpoints: []podEndpoint{
 				{
-					Address: "1.2.3.4:80",
-					MeshPodOwner: configs.MeshPodOwner{
-						OwnerType: "deployment",
-						OwnerName: "deploy-1",
-					},
+					Address: "1.2.3.4:8080",
 				},
 			},
-		},
-		{
-			desc:        "targetPort mismatch",
-			targetPort:  21,
-			expectedEps: nil,
-		},
-	}
-
-	pods := []*v1.Pod{
-		{
-			ObjectMeta: meta_v1.ObjectMeta{
-				OwnerReferences: []meta_v1.OwnerReference{
-					{
-						Kind:       "Deployment",
-						Name:       "deploy-1",
-						Controller: boolPointer(true),
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
 					},
-				},
-			},
-			Status: v1.PodStatus{
-				PodIP: "1.2.3.4",
-			},
-		},
-	}
-
-	svcEps := v1.Endpoints{
-		Subsets: []v1.EndpointSubset{
-			{
-				Addresses: []v1.EndpointAddress{
-					{
-						IP:       "1.2.3.4",
-						Hostname: "asdf.com",
-					},
-				},
-				Ports: []v1.EndpointPort{
-					{
-						Port: 80,
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
 					},
 				},
 			},
@@ -536,12 +548,1243 @@ func TestGetEndpointsBySubselectedPods(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
-			gotEndps := getEndpointsBySubselectedPods(test.targetPort, pods, svcEps)
-			if !reflect.DeepEqual(gotEndps, test.expectedEps) {
-				t.Errorf("getEndpointsBySubselectedPods() = %v, want %v", gotEndps, test.expectedEps)
+			gotEndpoints, err := lbc.getEndpointsForPortFromEndpointSlices(test.svcEndpointSlices, backendServicePort, &test.svc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("lbc.getEndpointsForPortFromEndpointSlices() got %v, want %v",
+					gotEndpoints, test.expectedEndpoints)
 			}
 		})
 	}
+}
+
+func TestGetEndpointsFromEndpointSlices_TwoDifferentEndpointsInOnEndpointSlice(t *testing.T) {
+	endpointPort := int32(8080)
+
+	lbc := LoadBalancerController{
+		isNginxPlus: true,
+	}
+
+	backendServicePort := networking.ServiceBackendPort{
+		Number: 8080,
+		Name:   "foo",
+	}
+	endpointReady := true
+
+	tests := []struct {
+		desc              string
+		svc               api_v1.Service
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		expectedEndpoints []podEndpoint
+	}{
+		{
+			desc: "two different endpoints in one endpoint slice",
+			svc: api_v1.Service{
+				TypeMeta: meta_v1.TypeMeta{},
+				ObjectMeta: meta_v1.ObjectMeta{
+					Name:      "coffee-svc",
+					Namespace: "default",
+				},
+				Spec: api_v1.ServiceSpec{
+					Ports: []api_v1.ServicePort{
+						{
+							Name:       "foo",
+							Port:       80,
+							TargetPort: intstr.FromInt(8080),
+						},
+					},
+				},
+				Status: api_v1.ServiceStatus{},
+			},
+			expectedEndpoints: []podEndpoint{
+				{
+					Address: "1.2.3.4:8080",
+				},
+				{
+					Address: "5.6.7.8:8080",
+				},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+						{
+							Addresses: []string{
+								"5.6.7.8",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			gotEndpoints, err := lbc.getEndpointsForPortFromEndpointSlices(test.svcEndpointSlices, backendServicePort, &test.svc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("lbc.getEndpointsForPortFromEndpointSlices() got %v, want %v",
+					gotEndpoints, test.expectedEndpoints)
+			}
+		})
+	}
+}
+
+func TestGetEndpointsFromEndpointSlices_DuplicateEndpointsAcrossTwoEndpointSlices(t *testing.T) {
+	endpointPort := int32(8080)
+
+	lbc := LoadBalancerController{
+		isNginxPlus: true,
+	}
+
+	backendServicePort := networking.ServiceBackendPort{
+		Number: 8080,
+		Name:   "foo",
+	}
+
+	endpointReady := true
+
+	tests := []struct {
+		desc              string
+		svc               api_v1.Service
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		expectedEndpoints []podEndpoint
+	}{
+		{
+			desc: "duplicate endpoints across two endpointslices",
+			svc: api_v1.Service{
+				TypeMeta: meta_v1.TypeMeta{},
+				ObjectMeta: meta_v1.ObjectMeta{
+					Name:      "coffee-svc",
+					Namespace: "default",
+				},
+				Spec: api_v1.ServiceSpec{
+					Ports: []api_v1.ServicePort{
+						{
+							Name:       "foo",
+							Port:       80,
+							TargetPort: intstr.FromInt(8080),
+						},
+					},
+				},
+				Status: api_v1.ServiceStatus{},
+			},
+			expectedEndpoints: []podEndpoint{
+				{
+					Address: "1.2.3.4:8080",
+				},
+				{
+					Address: "5.6.7.8:8080",
+				},
+				{
+					Address: "10.0.0.1:8080",
+				},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+						{
+							Addresses: []string{
+								"5.6.7.8",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+					},
+				},
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+						{
+							Addresses: []string{
+								"10.0.0.1",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			gotEndpoints, err := lbc.getEndpointsForPortFromEndpointSlices(test.svcEndpointSlices, backendServicePort, &test.svc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("lbc.getEndpointsForPortFromEndpointSlices() got %v, want %v",
+					gotEndpoints, test.expectedEndpoints)
+			}
+		})
+	}
+}
+
+func TestGetEndpointsFromEndpointSlices_TwoDifferentEndpointsInOnEndpointSliceOneEndpointNotReady(t *testing.T) {
+	endpointPort := int32(8080)
+
+	lbc := LoadBalancerController{
+		isNginxPlus: true,
+	}
+
+	backendServicePort := networking.ServiceBackendPort{
+		Number: 8080,
+		Name:   "foo",
+	}
+	endpointReadyTrue := true
+	endpointReadyFalse := false
+
+	tests := []struct {
+		desc              string
+		svc               api_v1.Service
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		expectedEndpoints []podEndpoint
+	}{
+		{
+			desc: "two different endpoints in one endpoint slice",
+			svc: api_v1.Service{
+				TypeMeta: meta_v1.TypeMeta{},
+				ObjectMeta: meta_v1.ObjectMeta{
+					Name:      "coffee-svc",
+					Namespace: "default",
+				},
+				Spec: api_v1.ServiceSpec{
+					Ports: []api_v1.ServicePort{
+						{
+							Name:       "foo",
+							Port:       80,
+							TargetPort: intstr.FromInt(8080),
+						},
+					},
+				},
+				Status: api_v1.ServiceStatus{},
+			},
+			expectedEndpoints: []podEndpoint{
+				{
+					Address: "1.2.3.4:8080",
+				},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReadyTrue,
+							},
+						},
+						{
+							Addresses: []string{
+								"5.6.7.8",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReadyFalse,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			gotEndpoints, err := lbc.getEndpointsForPortFromEndpointSlices(test.svcEndpointSlices, backendServicePort, &test.svc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("lbc.getEndpointsForPortFromEndpointSlices() got %v, want %v",
+					gotEndpoints, test.expectedEndpoints)
+			}
+		})
+	}
+}
+
+func TestGetEndpointsFromEndpointSlices_TwoDifferentEndpointsAcrossTwoEndpointSlicesOneEndpointNotReady(t *testing.T) {
+	endpointPort := int32(8080)
+
+	lbc := LoadBalancerController{
+		isNginxPlus: true,
+	}
+
+	backendServicePort := networking.ServiceBackendPort{
+		Number: 8080,
+		Name:   "foo",
+	}
+
+	endpointReadyTrue := true
+	endpointReadyFalse := false
+
+	tests := []struct {
+		desc              string
+		svc               api_v1.Service
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		expectedEndpoints []podEndpoint
+	}{
+		{
+			desc: "duplicate endpoints across two endpointslices",
+			svc: api_v1.Service{
+				TypeMeta: meta_v1.TypeMeta{},
+				ObjectMeta: meta_v1.ObjectMeta{
+					Name:      "coffee-svc",
+					Namespace: "default",
+				},
+				Spec: api_v1.ServiceSpec{
+					Ports: []api_v1.ServicePort{
+						{
+							Name:       "foo",
+							Port:       80,
+							TargetPort: intstr.FromInt(8080),
+						},
+					},
+				},
+				Status: api_v1.ServiceStatus{},
+			},
+			expectedEndpoints: []podEndpoint{
+				{
+					Address: "1.2.3.4:8080",
+				},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReadyTrue,
+							},
+						},
+					},
+				},
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"10.0.0.1",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReadyFalse,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			gotEndpoints, err := lbc.getEndpointsForPortFromEndpointSlices(test.svcEndpointSlices, backendServicePort, &test.svc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("lbc.getEndpointsForPortFromEndpointSlices() got %v, want %v",
+					gotEndpoints, test.expectedEndpoints)
+			}
+		})
+	}
+}
+
+func TestGetEndpointsFromEndpointSlices_ErrorsOnInvalidTargetPort(t *testing.T) {
+	endpointPort := int32(8080)
+
+	lbc := LoadBalancerController{
+		isNginxPlus: true,
+	}
+
+	backendServicePort := networking.ServiceBackendPort{
+		Number: 8080,
+		Name:   "foo",
+	}
+
+	tests := []struct {
+		desc              string
+		svc               api_v1.Service
+		svcEndpointSlices []discovery_v1.EndpointSlice
+	}{
+		{
+			desc: "Target Port should be 0",
+			svc: api_v1.Service{
+				TypeMeta: meta_v1.TypeMeta{},
+				ObjectMeta: meta_v1.ObjectMeta{
+					Name:      "coffee-svc",
+					Namespace: "default",
+				},
+				Spec: api_v1.ServiceSpec{
+					Ports: []api_v1.ServicePort{
+						{
+							Name:       "foo",
+							Port:       0,
+							TargetPort: intstr.FromInt(0),
+						},
+					},
+				},
+				Status: api_v1.ServiceStatus{},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+						},
+						{
+							Addresses: []string{
+								"5.6.7.8",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			_, err := lbc.getEndpointsForPortFromEndpointSlices(test.svcEndpointSlices, backendServicePort, &test.svc)
+			if err == nil {
+				t.Logf("%s but was %+v\n", test.desc, test.svc.Spec.Ports[0].TargetPort.IntVal)
+				t.Fatal("want error, got nil")
+			}
+		})
+	}
+}
+
+func TestGetEndpointsFromEndpointSlices_ErrorsOnNoEndpointSlicesFound(t *testing.T) {
+	lbc := LoadBalancerController{
+		isNginxPlus: true,
+	}
+
+	backendServicePort := networking.ServiceBackendPort{
+		Number: 8080,
+		Name:   "foo",
+	}
+
+	tests := []struct {
+		desc              string
+		svc               api_v1.Service
+		svcEndpointSlices []discovery_v1.EndpointSlice
+	}{
+		{
+			desc: "No EndpointSlices should be found",
+			svc: api_v1.Service{
+				TypeMeta: meta_v1.TypeMeta{},
+				ObjectMeta: meta_v1.ObjectMeta{
+					Name:      "coffee-svc",
+					Namespace: "default",
+				},
+				Spec: api_v1.ServiceSpec{
+					Ports: []api_v1.ServicePort{
+						{
+							Name:       "foo",
+							Port:       80,
+							TargetPort: intstr.FromInt(8080),
+						},
+					},
+				},
+				Status: api_v1.ServiceStatus{},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			_, err := lbc.getEndpointsForPortFromEndpointSlices(test.svcEndpointSlices, backendServicePort, &test.svc)
+			if err == nil {
+				t.Logf("%s but got %+v\n", test.desc, test.svcEndpointSlices)
+				t.Fatal("want error, got nil")
+			}
+		})
+	}
+}
+
+func TestGetEndpointSlicesBySubselectedPods_FindOnePodInOneEndpointSlice(t *testing.T) {
+	endpointPort := int32(8080)
+	endpointReady := true
+	boolPointer := func(b bool) *bool { return &b }
+	tests := []struct {
+		desc              string
+		targetPort        int32
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		pods              []*api_v1.Pod
+		expectedEndpoints []podEndpoint
+	}{
+		{
+			desc:       "find one pod in one endpointslice",
+			targetPort: 8080,
+			expectedEndpoints: []podEndpoint{
+				{
+					Address: "1.2.3.4:8080",
+					MeshPodOwner: configs.MeshPodOwner{
+						OwnerType: "deployment",
+						OwnerName: "deploy-1",
+					},
+				},
+			},
+			pods: []*api_v1.Pod{
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						OwnerReferences: []meta_v1.OwnerReference{
+							{
+								Kind:       "Deployment",
+								Name:       "deploy-1",
+								Controller: boolPointer(true),
+							},
+						},
+					},
+					Status: api_v1.PodStatus{
+						PodIP: "1.2.3.4",
+					},
+				},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			gotEndpoints := getEndpointsFromEndpointSlicesForSubselectedPods(test.targetPort, test.pods, test.svcEndpointSlices)
+
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("getEndpointsFromEndpointSlicesForSubselectedPods() = got %v, want %v", gotEndpoints, test.expectedEndpoints)
+			}
+		})
+	}
+}
+
+func TestGetEndpointSlicesBySubselectedPods_FindOnePodInTwoEndpointSlicesWithDuplicateEndpoints(t *testing.T) {
+	endpointPort := int32(8080)
+	endpointReady := true
+	boolPointer := func(b bool) *bool { return &b }
+	tests := []struct {
+		desc              string
+		targetPort        int32
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		pods              []*api_v1.Pod
+		expectedEndpoints []podEndpoint
+	}{
+		{
+			desc:       "find one pod in two endpointslices with duplicate endpoints",
+			targetPort: 8080,
+			expectedEndpoints: []podEndpoint{
+				{
+					Address: "1.2.3.4:8080",
+					MeshPodOwner: configs.MeshPodOwner{
+						OwnerType: "deployment",
+						OwnerName: "deploy-1",
+					},
+				},
+			},
+			pods: []*api_v1.Pod{
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						OwnerReferences: []meta_v1.OwnerReference{
+							{
+								Kind:       "Deployment",
+								Name:       "deploy-1",
+								Controller: boolPointer(true),
+							},
+						},
+					},
+					Status: api_v1.PodStatus{
+						PodIP: "1.2.3.4",
+					},
+				},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+					},
+				},
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			gotEndpoints := getEndpointsFromEndpointSlicesForSubselectedPods(test.targetPort, test.pods, test.svcEndpointSlices)
+
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("getEndpointsFromEndpointSlicesForSubselectedPods() = got %v, want %v", gotEndpoints, test.expectedEndpoints)
+			}
+		})
+	}
+}
+
+func TestGetEndpointSlicesBySubselectedPods_FindTwoPodsInOneEndpointSlice(t *testing.T) {
+	endpointPort := int32(8080)
+	endpointReady := true
+	boolPointer := func(b bool) *bool { return &b }
+	tests := []struct {
+		desc              string
+		targetPort        int32
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		pods              []*api_v1.Pod
+		expectedEndpoints []podEndpoint
+	}{
+		{
+			desc:       "find two pods in one endpointslice",
+			targetPort: 8080,
+			expectedEndpoints: []podEndpoint{
+				{
+					Address: "1.2.3.4:8080",
+					MeshPodOwner: configs.MeshPodOwner{
+						OwnerType: "deployment",
+						OwnerName: "deploy-1",
+					},
+				},
+				{
+					Address: "5.6.7.8:8080",
+					MeshPodOwner: configs.MeshPodOwner{
+						OwnerType: "deployment",
+						OwnerName: "deploy-1",
+					},
+				},
+			},
+			pods: []*api_v1.Pod{
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						OwnerReferences: []meta_v1.OwnerReference{
+							{
+								Kind:       "Deployment",
+								Name:       "deploy-1",
+								Controller: boolPointer(true),
+							},
+						},
+					},
+					Status: api_v1.PodStatus{
+						PodIP: "1.2.3.4",
+					},
+				},
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						OwnerReferences: []meta_v1.OwnerReference{
+							{
+								Kind:       "Deployment",
+								Name:       "deploy-1",
+								Controller: boolPointer(true),
+							},
+						},
+					},
+					Status: api_v1.PodStatus{
+						PodIP: "5.6.7.8",
+					},
+				},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+						{
+							Addresses: []string{
+								"5.6.7.8",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			gotEndpoints := getEndpointsFromEndpointSlicesForSubselectedPods(test.targetPort, test.pods, test.svcEndpointSlices)
+
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("getEndpointsFromEndpointSlicesForSubselectedPods() = got %v, want %v", gotEndpoints, test.expectedEndpoints)
+			}
+		})
+	}
+}
+
+func TestGetEndpointSlicesBySubselectedPods_FindTwoPodsInTwoEndpointSlices(t *testing.T) {
+	endpointPort := int32(8080)
+	endpointReady := true
+	boolPointer := func(b bool) *bool { return &b }
+	tests := []struct {
+		desc              string
+		targetPort        int32
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		pods              []*api_v1.Pod
+		expectedEndpoints []podEndpoint
+	}{
+		{
+			desc:       "find two pods in two endpointslices",
+			targetPort: 8080,
+			expectedEndpoints: []podEndpoint{
+				{
+					Address: "1.2.3.4:8080",
+					MeshPodOwner: configs.MeshPodOwner{
+						OwnerType: "deployment",
+						OwnerName: "deploy-1",
+					},
+				},
+				{
+					Address: "5.6.7.8:8080",
+					MeshPodOwner: configs.MeshPodOwner{
+						OwnerType: "deployment",
+						OwnerName: "deploy-1",
+					},
+				},
+			},
+			pods: []*api_v1.Pod{
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						OwnerReferences: []meta_v1.OwnerReference{
+							{
+								Kind:       "Deployment",
+								Name:       "deploy-1",
+								Controller: boolPointer(true),
+							},
+						},
+					},
+					Status: api_v1.PodStatus{
+						PodIP: "1.2.3.4",
+					},
+				},
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						OwnerReferences: []meta_v1.OwnerReference{
+							{
+								Kind:       "Deployment",
+								Name:       "deploy-1",
+								Controller: boolPointer(true),
+							},
+						},
+					},
+					Status: api_v1.PodStatus{
+						PodIP: "5.6.7.8",
+					},
+				},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+					},
+				},
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"5.6.7.8",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			gotEndpoints := getEndpointsFromEndpointSlicesForSubselectedPods(test.targetPort, test.pods, test.svcEndpointSlices)
+
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("getEndpointsFromEndpointSlicesForSubselectedPods() = got %v, want %v", gotEndpoints, test.expectedEndpoints)
+			}
+		})
+	}
+}
+
+func TestGetEndpointSlicesBySubselectedPods_FindOnePodEndpointInOneEndpointSliceWithOneEndpointNotReady(t *testing.T) {
+	endpointPort := int32(8080)
+	endpointReadyTrue := true
+	endpointReadyFalse := false
+	boolPointer := func(b bool) *bool { return &b }
+	tests := []struct {
+		desc              string
+		targetPort        int32
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		pods              []*api_v1.Pod
+		expectedEndpoints []podEndpoint
+	}{
+		{
+			desc:       "find two pods in one endpointslice",
+			targetPort: 8080,
+			expectedEndpoints: []podEndpoint{
+				{
+					Address: "1.2.3.4:8080",
+					MeshPodOwner: configs.MeshPodOwner{
+						OwnerType: "deployment",
+						OwnerName: "deploy-1",
+					},
+				},
+			},
+			pods: []*api_v1.Pod{
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						OwnerReferences: []meta_v1.OwnerReference{
+							{
+								Kind:       "Deployment",
+								Name:       "deploy-1",
+								Controller: boolPointer(true),
+							},
+						},
+					},
+					Status: api_v1.PodStatus{
+						PodIP: "1.2.3.4",
+					},
+				},
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						OwnerReferences: []meta_v1.OwnerReference{
+							{
+								Kind:       "Deployment",
+								Name:       "deploy-1",
+								Controller: boolPointer(true),
+							},
+						},
+					},
+					Status: api_v1.PodStatus{
+						PodIP: "5.6.7.8",
+					},
+				},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReadyTrue,
+							},
+						},
+						{
+							Addresses: []string{
+								"5.6.7.8",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReadyFalse,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			gotEndpoints := getEndpointsFromEndpointSlicesForSubselectedPods(test.targetPort, test.pods, test.svcEndpointSlices)
+
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("getEndpointsFromEndpointSlicesForSubselectedPods() = got %v, want %v", gotEndpoints, test.expectedEndpoints)
+			}
+		})
+	}
+}
+
+func TestGetEndpointSlicesBySubselectedPods_FindOnePodEndpointInTwoEndpointSlicesWithOneEndpointNotReady(t *testing.T) {
+	endpointPort := int32(8080)
+	endpointReadyTrue := true
+	endpointReadyFalse := false
+	boolPointer := func(b bool) *bool { return &b }
+	tests := []struct {
+		desc              string
+		targetPort        int32
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		pods              []*api_v1.Pod
+		expectedEndpoints []podEndpoint
+	}{
+		{
+			desc:       "find two pods in two endpointslices",
+			targetPort: 8080,
+			expectedEndpoints: []podEndpoint{
+				{
+					Address: "1.2.3.4:8080",
+					MeshPodOwner: configs.MeshPodOwner{
+						OwnerType: "deployment",
+						OwnerName: "deploy-1",
+					},
+				},
+			},
+			pods: []*api_v1.Pod{
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						OwnerReferences: []meta_v1.OwnerReference{
+							{
+								Kind:       "Deployment",
+								Name:       "deploy-1",
+								Controller: boolPointer(true),
+							},
+						},
+					},
+					Status: api_v1.PodStatus{
+						PodIP: "1.2.3.4",
+					},
+				},
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						OwnerReferences: []meta_v1.OwnerReference{
+							{
+								Kind:       "Deployment",
+								Name:       "deploy-1",
+								Controller: boolPointer(true),
+							},
+						},
+					},
+					Status: api_v1.PodStatus{
+						PodIP: "5.6.7.8",
+					},
+				},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReadyTrue,
+							},
+						},
+					},
+				},
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"5.6.7.8",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReadyFalse,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			gotEndpoints := getEndpointsFromEndpointSlicesForSubselectedPods(test.targetPort, test.pods, test.svcEndpointSlices)
+
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("getEndpointsFromEndpointSlicesForSubselectedPods() = got %v, want %v", gotEndpoints, test.expectedEndpoints)
+			}
+		})
+	}
+}
+
+func TestGetEndpointSlicesBySubselectedPods_FindNoPods(t *testing.T) {
+	endpointPort := int32(8080)
+	endpointReady := true
+	boolPointer := func(b bool) *bool { return &b }
+	tests := []struct {
+		desc              string
+		targetPort        int32
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		pods              []*api_v1.Pod
+		expectedEndpoints []podEndpoint
+	}{
+		{
+			desc:              "find no pods",
+			targetPort:        8080,
+			expectedEndpoints: nil,
+			pods: []*api_v1.Pod{
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						OwnerReferences: []meta_v1.OwnerReference{
+							{
+								Kind:       "Deployment",
+								Name:       "deploy-1",
+								Controller: boolPointer(true),
+							},
+						},
+					},
+					Status: api_v1.PodStatus{
+						PodIP: "1.2.3.4",
+					},
+				},
+			},
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"5.4.3.2",
+							},
+							Conditions: discovery_v1.EndpointConditions{
+								Ready: &endpointReady,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			gotEndpoints := getEndpointsFromEndpointSlicesForSubselectedPods(test.targetPort, test.pods, test.svcEndpointSlices)
+
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("getEndpointsFromEndpointSlicesForSubselectedPods() = got %v, want %v", gotEndpoints, test.expectedEndpoints)
+			}
+		})
+	}
+}
+
+func TestGetEndpointSlicesBySubselectedPods_TargetPortMismatch(t *testing.T) {
+	endpointPort := int32(8080)
+
+	boolPointer := func(b bool) *bool { return &b }
+	tests := []struct {
+		desc              string
+		targetPort        int32
+		svcEndpointSlices []discovery_v1.EndpointSlice
+		pods              []*api_v1.Pod
+		expectedEndpoints []podEndpoint
+	}{
+		{
+			desc:       "targetPort mismatch",
+			targetPort: 21,
+			svcEndpointSlices: []discovery_v1.EndpointSlice{
+				{
+					Ports: []discovery_v1.EndpointPort{
+						{
+							Port: &endpointPort,
+						},
+					},
+					Endpoints: []discovery_v1.Endpoint{
+						{
+							Addresses: []string{
+								"1.2.3.4",
+							},
+						},
+					},
+				},
+			},
+			pods: []*api_v1.Pod{
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						OwnerReferences: []meta_v1.OwnerReference{
+							{
+								Kind:       "Deployment",
+								Name:       "deploy-1",
+								Controller: boolPointer(true),
+							},
+						},
+					},
+					Status: api_v1.PodStatus{
+						PodIP: "1.2.3.4",
+					},
+				},
+			},
+			expectedEndpoints: nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			gotEndpoints := getEndpointsFromEndpointSlicesForSubselectedPods(test.targetPort, test.pods, test.svcEndpointSlices)
+
+			if result := unorderedEqual(gotEndpoints, test.expectedEndpoints); !result {
+				t.Errorf("getEndpointsFromEndpointSlicesForSubselectedPods() = got %v, want %v", gotEndpoints, test.expectedEndpoints)
+			}
+		})
+	}
+}
+
+func unorderedEqual(got, want []podEndpoint) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	exists := make(map[string]bool)
+	for _, value := range got {
+		exists[value.Address] = true
+	}
+	for _, value := range want {
+		if !exists[value.Address] {
+			return false
+		}
+	}
+	return true
 }
 
 func TestGetStatusFromEventTitle(t *testing.T) {
@@ -637,24 +1880,29 @@ func TestGetPolicies(t *testing.T) {
 		Spec: conf_v1.PolicySpec{},
 	}
 
-	lbc := LoadBalancerController{
-		isNginxPlus: true,
-		policyLister: &cache.FakeCustomStore{
-			GetByKeyFunc: func(key string) (item interface{}, exists bool, err error) {
-				switch key {
-				case "default/valid-policy":
-					return validPolicy, true, nil
-				case "default/valid-policy-ingress-class":
-					return validPolicyIngressClass, true, nil
-				case "default/invalid-policy":
-					return invalidPolicy, true, nil
-				case "nginx-ingress/valid-policy":
-					return nil, false, nil
-				default:
-					return nil, false, errors.New("GetByKey error")
-				}
-			},
+	policyLister := &cache.FakeCustomStore{
+		GetByKeyFunc: func(key string) (item interface{}, exists bool, err error) {
+			switch key {
+			case "default/valid-policy":
+				return validPolicy, true, nil
+			case "default/valid-policy-ingress-class":
+				return validPolicyIngressClass, true, nil
+			case "default/invalid-policy":
+				return invalidPolicy, true, nil
+			case "nginx-ingress/valid-policy":
+				return nil, false, nil
+			default:
+				return nil, false, errors.New("GetByKey error")
+			}
 		},
+	}
+
+	nsi := make(map[string]*namespacedInformer)
+	nsi[""] = &namespacedInformer{policyLister: policyLister}
+
+	lbc := LoadBalancerController{
+		isNginxPlus:         true,
+		namespacedInformers: nsi,
 	}
 
 	policyRefs := []conf_v1.PolicyReference{
@@ -682,9 +1930,9 @@ func TestGetPolicies(t *testing.T) {
 
 	expectedPolicies := []*conf_v1.Policy{validPolicy}
 	expectedErrors := []error{
-		errors.New("Policy default/invalid-policy is invalid: spec: Invalid value: \"\": must specify exactly one of: `accessControl`, `rateLimit`, `ingressMTLS`, `egressMTLS`, `jwt`, `oidc`, `waf`"),
-		errors.New("Policy nginx-ingress/valid-policy doesn't exist"),
-		errors.New("Failed to get policy nginx-ingress/some-policy: GetByKey error"),
+		errors.New("policy default/invalid-policy is invalid: spec: Invalid value: \"\": must specify exactly one of: `accessControl`, `rateLimit`, `ingressMTLS`, `egressMTLS`, `basicAuth`, `jwt`, `oidc`, `waf`"),
+		errors.New("policy nginx-ingress/valid-policy doesn't exist"),
+		errors.New("failed to get policy nginx-ingress/some-policy: GetByKey error"),
 		errors.New("referenced policy default/valid-policy-ingress-class has incorrect ingress class: test-class (controller ingress class: )"),
 	}
 
@@ -757,37 +2005,37 @@ func TestGetPodOwnerTypeAndName(t *testing.T) {
 		desc    string
 		expType string
 		expName string
-		pod     *v1.Pod
+		pod     *api_v1.Pod
 	}{
 		{
 			desc:    "deployment",
 			expType: "deployment",
 			expName: "deploy-name",
-			pod:     &v1.Pod{ObjectMeta: createTestObjMeta("Deployment", "deploy-name", true)},
+			pod:     &api_v1.Pod{ObjectMeta: createTestObjMeta("Deployment", "deploy-name", true)},
 		},
 		{
 			desc:    "stateful set",
 			expType: "statefulset",
 			expName: "statefulset-name",
-			pod:     &v1.Pod{ObjectMeta: createTestObjMeta("StatefulSet", "statefulset-name", true)},
+			pod:     &api_v1.Pod{ObjectMeta: createTestObjMeta("StatefulSet", "statefulset-name", true)},
 		},
 		{
 			desc:    "daemon set",
 			expType: "daemonset",
 			expName: "daemonset-name",
-			pod:     &v1.Pod{ObjectMeta: createTestObjMeta("DaemonSet", "daemonset-name", true)},
+			pod:     &api_v1.Pod{ObjectMeta: createTestObjMeta("DaemonSet", "daemonset-name", true)},
 		},
 		{
 			desc:    "replica set with no pod hash",
 			expType: "deployment",
 			expName: "replicaset-name",
-			pod:     &v1.Pod{ObjectMeta: createTestObjMeta("ReplicaSet", "replicaset-name", false)},
+			pod:     &api_v1.Pod{ObjectMeta: createTestObjMeta("ReplicaSet", "replicaset-name", false)},
 		},
 		{
 			desc:    "replica set with pod hash",
 			expType: "deployment",
 			expName: "replicaset-name",
-			pod: &v1.Pod{
+			pod: &api_v1.Pod{
 				ObjectMeta: createTestObjMeta("ReplicaSet", "replicaset-name-67c6f7c5fd", true),
 			},
 		},
@@ -795,7 +2043,7 @@ func TestGetPodOwnerTypeAndName(t *testing.T) {
 			desc:    "nil controller should use default values",
 			expType: "deployment",
 			expName: "deploy-name",
-			pod: &v1.Pod{
+			pod: &api_v1.Pod{
 				ObjectMeta: meta_v1.ObjectMeta{
 					OwnerReferences: []meta_v1.OwnerReference{
 						{
@@ -958,6 +2206,30 @@ func TestFindPoliciesForSecret(t *testing.T) {
 		},
 	}
 
+	basicPol1 := &conf_v1.Policy{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:      "basic-auth-policy",
+			Namespace: "default",
+		},
+		Spec: conf_v1.PolicySpec{
+			BasicAuth: &conf_v1.BasicAuth{
+				Secret: "basic-auth-secret",
+			},
+		},
+	}
+
+	basicPol2 := &conf_v1.Policy{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:      "basic-auth-policy",
+			Namespace: "ns-1",
+		},
+		Spec: conf_v1.PolicySpec{
+			BasicAuth: &conf_v1.BasicAuth{
+				Secret: "basic-auth-secret",
+			},
+		},
+	}
+
 	ingTLSPol := &conf_v1.Policy{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "ingress-mtls-policy",
@@ -1029,6 +2301,27 @@ func TestFindPoliciesForSecret(t *testing.T) {
 			secretNamespace: "default",
 			secretName:      "jwk-secret",
 			expected:        []*conf_v1.Policy{jwtPol1},
+			msg:             "Find policy in default ns, ignore other",
+		},
+		{
+			policies:        []*conf_v1.Policy{basicPol1},
+			secretNamespace: "default",
+			secretName:      "basic-auth-secret",
+			expected:        []*conf_v1.Policy{basicPol1},
+			msg:             "Find policy in default ns",
+		},
+		{
+			policies:        []*conf_v1.Policy{basicPol2},
+			secretNamespace: "default",
+			secretName:      "basic-auth-secret",
+			expected:        nil,
+			msg:             "Ignore policies in other namespaces",
+		},
+		{
+			policies:        []*conf_v1.Policy{basicPol1, basicPol2},
+			secretNamespace: "default",
+			secretName:      "basic-auth-secret",
+			expected:        []*conf_v1.Policy{basicPol1},
 			msg:             "Find policy in default ns, ignore other",
 		},
 		{
@@ -1106,14 +2399,14 @@ func errorComparer(e1, e2 error) bool {
 
 func TestAddJWTSecrets(t *testing.T) {
 	invalidErr := errors.New("invalid")
-	validJWKSecret := &v1.Secret{
+	validJWKSecret := &api_v1.Secret{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "valid-jwk-secret",
 			Namespace: "default",
 		},
 		Type: secrets.SecretTypeJWK,
 	}
-	invalidJWKSecret := &v1.Secret{
+	invalidJWKSecret := &api_v1.Secret{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "invalid-jwk-secret",
 			Namespace: "default",
@@ -1150,6 +2443,26 @@ func TestAddJWTSecrets(t *testing.T) {
 			},
 			wantErr: false,
 			msg:     "test getting valid secret",
+		},
+		{
+			policies: []*conf_v1.Policy{
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "jwt-policy",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						JWTAuth: &conf_v1.JWTAuth{
+							Realm:    "My API",
+							JwksURI:  "https://idp.com/token",
+							KeyCache: "1h",
+						},
+					},
+				},
+			},
+			expectedSecretRefs: map[string]*secrets.SecretReference{},
+			wantErr:            false,
+			msg:                "test getting valid policy using JwksUri",
 		},
 		{
 			policies:           []*conf_v1.Policy{},
@@ -1228,16 +2541,140 @@ func TestAddJWTSecrets(t *testing.T) {
 	}
 }
 
+func TestAddBasicSecrets(t *testing.T) {
+	invalidErr := errors.New("invalid")
+	validBasicSecret := &api_v1.Secret{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:      "valid-basic-auth-secret",
+			Namespace: "default",
+		},
+		Type: secrets.SecretTypeJWK,
+	}
+	invalidBasicSecret := &api_v1.Secret{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:      "invalid-basic-auth-secret",
+			Namespace: "default",
+		},
+		Type: secrets.SecretTypeJWK,
+	}
+
+	tests := []struct {
+		policies           []*conf_v1.Policy
+		expectedSecretRefs map[string]*secrets.SecretReference
+		wantErr            bool
+		msg                string
+	}{
+		{
+			policies: []*conf_v1.Policy{
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "basic-auth-policy",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						BasicAuth: &conf_v1.BasicAuth{
+							Secret: "valid-basic-auth-secret",
+							Realm:  "My API",
+						},
+					},
+				},
+			},
+			expectedSecretRefs: map[string]*secrets.SecretReference{
+				"default/valid-basic-auth-secret": {
+					Secret: validBasicSecret,
+					Path:   "/etc/nginx/secrets/default-valid-basic-auth-secret",
+				},
+			},
+			wantErr: false,
+			msg:     "test getting valid secret",
+		},
+		{
+			policies:           []*conf_v1.Policy{},
+			expectedSecretRefs: map[string]*secrets.SecretReference{},
+			wantErr:            false,
+			msg:                "test getting valid secret with no policy",
+		},
+		{
+			policies: []*conf_v1.Policy{
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "basic-auth-policy",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						AccessControl: &conf_v1.AccessControl{
+							Allow: []string{"127.0.0.1"},
+						},
+					},
+				},
+			},
+			expectedSecretRefs: map[string]*secrets.SecretReference{},
+			wantErr:            false,
+			msg:                "test getting invalid secret with wrong policy",
+		},
+		{
+			policies: []*conf_v1.Policy{
+				{
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "basic-auth-policy",
+						Namespace: "default",
+					},
+					Spec: conf_v1.PolicySpec{
+						BasicAuth: &conf_v1.BasicAuth{
+							Secret: "invalid-basic-auth-secret",
+							Realm:  "My API",
+						},
+					},
+				},
+			},
+			expectedSecretRefs: map[string]*secrets.SecretReference{
+				"default/invalid-basic-auth-secret": {
+					Secret: invalidBasicSecret,
+					Error:  invalidErr,
+				},
+			},
+			wantErr: true,
+			msg:     "test getting invalid secret",
+		},
+	}
+
+	lbc := LoadBalancerController{
+		secretStore: secrets.NewFakeSecretsStore(map[string]*secrets.SecretReference{
+			"default/valid-basic-auth-secret": {
+				Secret: validBasicSecret,
+				Path:   "/etc/nginx/secrets/default-valid-basic-auth-secret",
+			},
+			"default/invalid-basic-auth-secret": {
+				Secret: invalidBasicSecret,
+				Error:  invalidErr,
+			},
+		}),
+	}
+
+	for _, test := range tests {
+		result := make(map[string]*secrets.SecretReference)
+
+		err := lbc.addBasicSecretRefs(result, test.policies)
+		if (err != nil) != test.wantErr {
+			t.Errorf("addBasicSecretRefs() returned %v, for the case of %v", err, test.msg)
+		}
+
+		if diff := cmp.Diff(test.expectedSecretRefs, result, cmp.Comparer(errorComparer)); diff != "" {
+			t.Errorf("addBasicSecretRefs() '%v' mismatch (-want +got):\n%s", test.msg, diff)
+		}
+	}
+}
+
 func TestAddIngressMTLSSecret(t *testing.T) {
 	invalidErr := errors.New("invalid")
-	validSecret := &v1.Secret{
+	validSecret := &api_v1.Secret{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "valid-ingress-mtls-secret",
 			Namespace: "default",
 		},
 		Type: secrets.SecretTypeCA,
 	}
-	invalidSecret := &v1.Secret{
+	invalidSecret := &api_v1.Secret{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "invalid-ingress-mtls-secret",
 			Namespace: "default",
@@ -1352,28 +2789,28 @@ func TestAddIngressMTLSSecret(t *testing.T) {
 
 func TestAddEgressMTLSSecrets(t *testing.T) {
 	invalidErr := errors.New("invalid")
-	validMTLSSecret := &v1.Secret{
+	validMTLSSecret := &api_v1.Secret{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "valid-egress-mtls-secret",
 			Namespace: "default",
 		},
 		Type: api_v1.SecretTypeTLS,
 	}
-	validTrustedSecret := &v1.Secret{
+	validTrustedSecret := &api_v1.Secret{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "valid-egress-trusted-secret",
 			Namespace: "default",
 		},
 		Type: secrets.SecretTypeCA,
 	}
-	invalidMTLSSecret := &v1.Secret{
+	invalidMTLSSecret := &api_v1.Secret{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "invalid-egress-mtls-secret",
 			Namespace: "default",
 		},
 		Type: api_v1.SecretTypeTLS,
 	}
-	invalidTrustedSecret := &v1.Secret{
+	invalidTrustedSecret := &api_v1.Secret{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "invalid-egress-trusted-secret",
 			Namespace: "default",
@@ -1569,7 +3006,7 @@ func TestAddEgressMTLSSecrets(t *testing.T) {
 
 func TestAddOidcSecret(t *testing.T) {
 	invalidErr := errors.New("invalid")
-	validSecret := &v1.Secret{
+	validSecret := &api_v1.Secret{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "valid-oidc-secret",
 			Namespace: "default",
@@ -1579,7 +3016,7 @@ func TestAddOidcSecret(t *testing.T) {
 		},
 		Type: secrets.SecretTypeOIDC,
 	}
-	invalidSecret := &v1.Secret{
+	invalidSecret := &api_v1.Secret{
 		ObjectMeta: meta_v1.ObjectMeta{
 			Name:      "invalid-oidc-secret",
 			Namespace: "default",
@@ -2104,29 +3541,33 @@ func TestGetWAFPoliciesForAppProtectLogConf(t *testing.T) {
 }
 
 func TestPreSyncSecrets(t *testing.T) {
-	lbc := LoadBalancerController{
-		isNginxPlus: true,
-		secretStore: secrets.NewEmptyFakeSecretsStore(),
-		secretLister: &cache.FakeCustomStore{
-			ListFunc: func() []interface{} {
-				return []interface{}{
-					&api_v1.Secret{
-						ObjectMeta: meta_v1.ObjectMeta{
-							Name:      "supported-secret",
-							Namespace: "default",
-						},
-						Type: api_v1.SecretTypeTLS,
+	secretLister := &cache.FakeCustomStore{
+		ListFunc: func() []interface{} {
+			return []interface{}{
+				&api_v1.Secret{
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "supported-secret",
+						Namespace: "default",
 					},
-					&api_v1.Secret{
-						ObjectMeta: meta_v1.ObjectMeta{
-							Name:      "unsupported-secret",
-							Namespace: "default",
-						},
-						Type: api_v1.SecretTypeOpaque,
+					Type: api_v1.SecretTypeTLS,
+				},
+				&api_v1.Secret{
+					ObjectMeta: meta_v1.ObjectMeta{
+						Name:      "unsupported-secret",
+						Namespace: "default",
 					},
-				}
-			},
+					Type: api_v1.SecretTypeOpaque,
+				},
+			}
 		},
+	}
+	nsi := make(map[string]*namespacedInformer)
+	nsi[""] = &namespacedInformer{secretLister: secretLister, isSecretsEnabledNamespace: true}
+
+	lbc := LoadBalancerController{
+		isNginxPlus:         true,
+		secretStore:         secrets.NewEmptyFakeSecretsStore(),
+		namespacedInformers: nsi,
 	}
 
 	lbc.preSyncSecrets()

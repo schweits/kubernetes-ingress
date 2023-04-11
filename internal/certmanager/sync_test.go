@@ -490,7 +490,19 @@ func TestSync(t *testing.T) {
 			}
 			b.Init()
 			defer b.Stop()
-			sync := SyncFnFor(b.Recorder, b.CMClient, b.SharedInformerFactory.Certmanager().V1().Certificates().Lister())
+
+			ig := make(map[string]*namespacedInformer)
+
+			nsi := &namespacedInformer{
+				cmSharedInformerFactory:   b.FakeCMInformerFactory(),
+				kubeSharedInformerFactory: b.FakeKubeInformerFactory(),
+				vsSharedInformerFactory:   b.VsSharedInformerFactory,
+				cmLister:                  b.SharedInformerFactory.Certmanager().V1().Certificates().Lister(),
+			}
+
+			ig[""] = nsi
+
+			sync := SyncFnFor(b.Recorder, b.CMClient, ig)
 			b.Start()
 
 			err := sync(context.Background(), &test.VirtualServer)

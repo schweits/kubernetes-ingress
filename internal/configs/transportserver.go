@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	api_v1 "k8s.io/api/core/v1"
+
 	"github.com/nginxinc/kubernetes-ingress/internal/configs/version2"
+	"github.com/nginxinc/kubernetes-ingress/internal/k8s/secrets"
 	conf_v1alpha1 "github.com/nginxinc/kubernetes-ingress/pkg/apis/configuration/v1alpha1"
 )
 
@@ -12,33 +15,46 @@ const nginxNonExistingUnixSocket = "unix:/var/lib/nginx/non-existing-unix-socket
 
 // TransportServerEx holds a TransportServer along with the resources referenced by it.
 type TransportServerEx struct {
-	ListenerPort    int
-	TransportServer *conf_v1alpha1.TransportServer
-	Endpoints       map[string][]string
-	PodsByIP        map[string]string
+	ListenerPort     int
+	TransportServer  *conf_v1alpha1.TransportServer
+	Endpoints        map[string][]string
+	PodsByIP         map[string]string
+	ExternalNameSvcs map[string]bool
+	DisableIPV6      bool
+	SecretRefs       map[string]*secrets.SecretReference
 }
 
 func (tsEx *TransportServerEx) String() string {
 	if tsEx == nil {
 		return "<nil>"
 	}
-
 	if tsEx.TransportServer == nil {
 		return "TransportServerEx has no TransportServer"
 	}
-
 	return fmt.Sprintf("%s/%s", tsEx.TransportServer.Namespace, tsEx.TransportServer.Name)
 }
 
+func newUpstreamNamerForTransportServer(transportServer *conf_v1alpha1.TransportServer) *upstreamNamer {
+	return &upstreamNamer{
+		prefix: fmt.Sprintf("ts_%s_%s", transportServer.Namespace, transportServer.Name),
+	}
+}
+
 // generateTransportServerConfig generates a full configuration for a TransportServer.
-func generateTransportServerConfig(transportServerEx *TransportServerEx, listenerPort int, isPlus bool) *version2.TransportServerConfig {
+func generateTransportServerConfig(transportServerEx *TransportServerEx, listenerPort int, isPlus bool, isResolverConfigured bool) (*version2.TransportServerConfig, Warnings) {
+	warnings := newWarnings()
+
 	upstreamNamer := newUpstreamNamerForTransportServer(transportServerEx.TransportServer)
 
-	upstreams := generateStreamUpstreams(transportServerEx, upstreamNamer, isPlus)
+	upstreams, w := generateStreamUpstreams(transportServerEx, upstreamNamer, isPlus, isResolverConfigured)
+	warnings.Add(w)
 
 	healthCheck, match := generateTransportServerHealthCheck(transportServerEx.TransportServer.Spec.Action.Pass,
 		upstreamNamer.GetNameForUpstream(transportServerEx.TransportServer.Spec.Action.Pass),
 		transportServerEx.TransportServer.Spec.Upstreams)
+
+	sslConfig, w := generateSSLConfig(transportServerEx.TransportServer, transportServerEx.TransportServer.Spec.TLS, transportServerEx.TransportServer.Namespace, transportServerEx.SecretRefs)
+	warnings.Add(w)
 
 	var proxyRequests, proxyResponses *int
 	var connectTimeout, nextUpstreamTimeout string
@@ -90,34 +106,75 @@ func generateTransportServerConfig(transportServerEx *TransportServerEx, listene
 			ProxyNextUpstreamTries:   nextUpstreamTries,
 			HealthCheck:              healthCheck,
 			ServerSnippets:           serverSnippets,
+			DisableIPV6:              transportServerEx.DisableIPV6,
+			SSL:                      sslConfig,
 		},
 		Match:          match,
 		Upstreams:      upstreams,
 		StreamSnippets: streamSnippets,
 	}
-
-	return tsConfig
+	return tsConfig, warnings
 }
 
 func generateUnixSocket(transportServerEx *TransportServerEx) string {
 	if transportServerEx.TransportServer.Spec.Listener.Name == conf_v1alpha1.TLSPassthroughListenerName {
 		return fmt.Sprintf("unix:/var/lib/nginx/passthrough-%s_%s.sock", transportServerEx.TransportServer.Namespace, transportServerEx.TransportServer.Name)
 	}
-
 	return ""
 }
 
-func generateStreamUpstreams(transportServerEx *TransportServerEx, upstreamNamer *upstreamNamer, isPlus bool) []version2.StreamUpstream {
+func generateSSLConfig(ts *conf_v1alpha1.TransportServer, tls *conf_v1alpha1.TLS, namespace string, secretRefs map[string]*secrets.SecretReference) (*version2.StreamSSL, Warnings) {
+	if tls == nil {
+		return &version2.StreamSSL{Enabled: false}, nil
+	}
+
+	warnings := newWarnings()
+	sslEnabled := true
+
+	secretRef := secretRefs[fmt.Sprintf("%s/%s", namespace, tls.Secret)]
+	var secretType api_v1.SecretType
+	if secretRef.Secret != nil {
+		secretType = secretRef.Secret.Type
+	}
+	name := secretRef.Path
+	if secretType != "" && secretType != api_v1.SecretTypeTLS {
+		errMsg := fmt.Sprintf("TLS secret %s is of a wrong type '%s', must be '%s'. SSL termination will not be enabled for this server.", tls.Secret, secretType, api_v1.SecretTypeTLS)
+		warnings.AddWarning(ts, errMsg)
+		sslEnabled = false
+	} else if secretRef.Error != nil {
+		errMsg := fmt.Sprintf("TLS secret %s is invalid: %v. SSL termination will not be enabled for this server.", tls.Secret, secretRef.Error)
+		warnings.AddWarning(ts, errMsg)
+		sslEnabled = false
+	}
+
+	ssl := version2.StreamSSL{
+		Enabled:        sslEnabled,
+		Certificate:    name,
+		CertificateKey: name,
+	}
+
+	return &ssl, warnings
+}
+
+func generateStreamUpstreams(transportServerEx *TransportServerEx, upstreamNamer *upstreamNamer, isPlus bool, isResolverConfigured bool) ([]version2.StreamUpstream, Warnings) {
+	warnings := newWarnings()
 	var upstreams []version2.StreamUpstream
 
 	for _, u := range transportServerEx.TransportServer.Spec.Upstreams {
-
 		// subselector is not supported yet in TransportServer upstreams. That's why we pass "nil" here
 		endpointsKey := GenerateEndpointsKey(transportServerEx.TransportServer.Namespace, u.Service, nil, uint16(u.Port))
+		externalNameSvcKey := GenerateExternalNameSvcKey(transportServerEx.TransportServer.Namespace, u.Service)
 		endpoints := transportServerEx.Endpoints[endpointsKey]
 
-		ups := generateStreamUpstream(u, upstreamNamer, endpoints, isPlus)
+		_, isExternalNameSvc := transportServerEx.ExternalNameSvcs[externalNameSvcKey]
+		if isExternalNameSvc && !isResolverConfigured {
+			msgFmt := "Type ExternalName service %v in upstream %v will be ignored. To use ExternalName services, a resolver must be configured in the ConfigMap"
+			warnings.AddWarningf(transportServerEx.TransportServer, msgFmt, u.Service, u.Name)
+			endpoints = []string{}
+		}
 
+		ups := generateStreamUpstream(u, upstreamNamer, endpoints, isPlus)
+		ups.Resolve = isExternalNameSvc
 		ups.UpstreamLabels.Service = u.Service
 		ups.UpstreamLabels.ResourceType = "transportserver"
 		ups.UpstreamLabels.ResourceName = transportServerEx.TransportServer.Name
@@ -125,8 +182,7 @@ func generateStreamUpstreams(transportServerEx *TransportServerEx, upstreamNamer
 
 		upstreams = append(upstreams, ups)
 	}
-
-	return upstreams
+	return upstreams, warnings
 }
 
 func generateTransportServerHealthCheck(upstreamName string, generatedUpstreamName string, upstreams []conf_v1alpha1.Upstream) (*version2.StreamHealthCheck, *version2.Match) {
@@ -138,7 +194,7 @@ func generateTransportServerHealthCheck(upstreamName string, generatedUpstreamNa
 			if u.HealthCheck == nil || !u.HealthCheck.Enabled {
 				return nil, nil
 			}
-			hc = generateTransportServerHealthCheckWithDefaults(u)
+			hc = generateTransportServerHealthCheckWithDefaults()
 
 			hc.Enabled = u.HealthCheck.Enabled
 			hc.Interval = generateTimeWithDefault(u.HealthCheck.Interval, hc.Interval)
@@ -163,11 +219,10 @@ func generateTransportServerHealthCheck(upstreamName string, generatedUpstreamNa
 			break
 		}
 	}
-
 	return hc, match
 }
 
-func generateTransportServerHealthCheckWithDefaults(up conf_v1alpha1.Upstream) *version2.StreamHealthCheck {
+func generateTransportServerHealthCheckWithDefaults() *version2.StreamHealthCheck {
 	return &version2.StreamHealthCheck{
 		Enabled:  false,
 		Timeout:  "5s",

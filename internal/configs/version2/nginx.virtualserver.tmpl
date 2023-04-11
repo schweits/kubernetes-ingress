@@ -41,7 +41,7 @@ limit_req_zone {{ $z.Key }} zone={{ $z.ZoneName }}:{{ $z.ZoneSize }} rate={{ $z.
 {{ $s := .Server }}
 server {
     listen 80{{ if $s.ProxyProtocol }} proxy_protocol{{ end }};
-    listen [::]:80{{ if $s.ProxyProtocol }} proxy_protocol{{ end }};
+    {{ if not $s.DisableIPV6 }}listen [::]:80{{ if $s.ProxyProtocol }} proxy_protocol{{ end }};{{ end }}
 
     server_name {{ $s.ServerName }};
 
@@ -57,7 +57,7 @@ server {
     real_ip_header proxy_protocol;
         {{ else }}
     listen 443 ssl{{ if $ssl.HTTP2 }} http2{{ end }}{{ if $s.ProxyProtocol }} proxy_protocol{{ end }};
-    listen [::]:443 ssl{{ if $ssl.HTTP2 }} http2{{ end }}{{ if $s.ProxyProtocol }} proxy_protocol{{ end }};
+    {{ if not $s.DisableIPV6 }}listen [::]:443 ssl{{ if $ssl.HTTP2 }} http2{{ end }}{{ if $s.ProxyProtocol }} proxy_protocol{{ end }};{{ end }}
         {{ end }}
 
         {{ if $ssl.RejectHandshake }}
@@ -70,6 +70,9 @@ server {
 
     {{ with $s.IngressMTLS }}
     ssl_client_certificate {{ .ClientCert }};
+    {{ if .ClientCrl }}
+    ssl_crl {{ .ClientCrl }};
+    {{ end }}
     ssl_verify_client {{ .VerifyClient }};
     ssl_verify_depth {{ .VerifyDepth }};
     {{ end }}
@@ -125,6 +128,11 @@ server {
     {{ range $rl := $s.LimitReqs }}
     limit_req zone={{ $rl.ZoneName }}{{ if $rl.Burst }} burst={{ $rl.Burst }}{{ end }}
         {{ if $rl.Delay }} delay={{ $rl.Delay }}{{ end }}{{ if $rl.NoDelay }} nodelay{{ end }};
+    {{ end }}
+
+    {{ with $s.BasicAuth }}
+    auth_basic {{ printf "%q" .Realm }};
+    auth_basic_user_file {{ .Secret }};
     {{ end }}
 
     {{ with $s.EgressMTLS }}
@@ -226,6 +234,11 @@ server {
             {{ if $rl.Delay }} delay={{ $rl.Delay }}{{ end }}{{ if $rl.NoDelay }} nodelay{{ end }};
         {{ end }}
 
+        {{ with $l.BasicAuth }}
+        auth_basic {{ printf "%q" .Realm }};
+        auth_basic_user_file {{ .Secret }};
+        {{ end }}
+
         {{ $proxyOrGRPC := "proxy" }}{{ if $l.GRPCPass }}{{ $proxyOrGRPC = "grpc" }}{{ end }}
 
         {{ with $l.EgressMTLS }}
@@ -308,14 +321,33 @@ server {
         proxy_set_header Connection $vs_connection_header;
         proxy_pass_request_headers {{ if $l.ProxyPassRequestHeaders }}on{{ else }}off{{ end }};
             {{ end }}
+
+        {{- $custom_headers := $l.ProxySetHeaders | headerListToCIMap }}
+
+        {{- if not ($custom_headers | hasCIKey "X-Real-IP") }}
         {{ $proxyOrGRPC }}_set_header X-Real-IP $remote_addr;
+        {{- end }}
+
+        {{- if not ($custom_headers | hasCIKey "X-Forwarded-For") }}
         {{ $proxyOrGRPC }}_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        {{- end }}
+
+        {{- if not ($custom_headers | hasCIKey "X-Forwarded-Host") }}
         {{ $proxyOrGRPC }}_set_header X-Forwarded-Host $host;
+        {{- end }}
+
+        {{- if not ($custom_headers | hasCIKey "X-Forwarded-Port") }}
         {{ $proxyOrGRPC }}_set_header X-Forwarded-Port $server_port;
+        {{- end }}
+
+        {{- if not ($custom_headers | hasCIKey "X-Forwarded-Proto") }}
         {{ $proxyOrGRPC }}_set_header X-Forwarded-Proto {{ with $s.TLSRedirect }}{{ .BasedOn }}{{ else }}$scheme{{ end }};
-            {{ range $h := $l.ProxySetHeaders }}
+        {{- end }}
+
+        {{- range $h := $l.ProxySetHeaders }}
         {{ $proxyOrGRPC }}_set_header {{ $h.Name }} "{{ $h.Value }}";
-            {{ end }}
+        {{- end }}
+
             {{ range $h := $l.ProxyHideHeaders }}
         {{ $proxyOrGRPC }}_hide_header {{ $h }};
             {{ end }}
@@ -327,6 +359,15 @@ server {
             {{ end }}
             {{ range $h := $l.AddHeaders }}
         add_header {{ $h.Name }} "{{ $h.Value }}" {{ if $h.Always }}always{{ end }};
+            {{ end }}
+            {{ if $.SpiffeCerts }}
+        {{ $proxyOrGRPC }}_ssl_certificate /etc/nginx/secrets/spiffe_cert.pem;
+        {{ $proxyOrGRPC }}_ssl_certificate_key /etc/nginx/secrets/spiffe_key.pem;
+        {{ $proxyOrGRPC }}_ssl_trusted_certificate /etc/nginx/secrets/spiffe_rootca.pem;
+        {{ $proxyOrGRPC }}_ssl_server_name on;
+        {{ $proxyOrGRPC }}_ssl_verify on;
+        {{ $proxyOrGRPC }}_ssl_verify_depth 25;
+        {{ $proxyOrGRPC }}_ssl_name {{ $l.ProxySSLName }};
             {{ end }}
             {{if $l.GRPCPass}}
         grpc_pass {{ $l.GRPCPass }};

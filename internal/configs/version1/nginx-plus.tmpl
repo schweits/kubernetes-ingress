@@ -71,6 +71,9 @@ http {
                         'ip_tls=$remote_addr:$app_protect_dos_tls_fp, ';
 
     {{- end}}
+    {{- if .AppProtectDosArbFqdn}}
+    app_protect_dos_arb_fqdn {{.AppProtectDosArbFqdn}};
+    {{- end}}
     {{- end}}
 
     {{if .AccessLogOff}}
@@ -150,7 +153,7 @@ http {
         set $service "";
 
         listen 80 default_server{{if .ProxyProtocol}} proxy_protocol{{end}};
-        listen [::]:80 default_server{{if .ProxyProtocol}} proxy_protocol{{end}};
+        {{if not .DisableIPV6}}listen [::]:80 default_server{{if .ProxyProtocol}} proxy_protocol{{end}};{{end}}
 
         {{if .TLSPassthrough}}
         listen unix:/var/lib/nginx/passthrough-https.sock ssl default_server{{if .HTTP2}} http2{{end}} proxy_protocol;
@@ -158,7 +161,7 @@ http {
         real_ip_header proxy_protocol;
         {{else}}
         listen 443 ssl default_server{{if .HTTP2}} http2{{end}}{{if .ProxyProtocol}} proxy_protocol{{end}};
-        listen [::]:443 ssl default_server{{if .HTTP2}} http2{{end}}{{if .ProxyProtocol}} proxy_protocol{{end}};
+        {{if not .DisableIPV6}}listen [::]:443 ssl default_server{{if .HTTP2}} http2{{end}}{{if .ProxyProtocol}} proxy_protocol{{end}};{{end}}
         {{end}}
 
         {{if .SSLRejectHandshake}}
@@ -199,7 +202,7 @@ http {
     # NGINX Plus APIs
     server {
         listen {{.NginxStatusPort}};
-        listen [::]:{{.NginxStatusPort}};
+        {{if not .DisableIPV6}}listen [::]:{{.NginxStatusPort}};{{end}}
 
         root /usr/share/nginx/html;
 
@@ -211,11 +214,18 @@ http {
 
         location  = /dashboard.html {
         }
+        {{if .AppProtectDosLoadModule}}
+        location = /dashboard-dos.html {
+        }
+        {{end}}
         {{range $value := .NginxStatusAllowCIDRs}}
         allow {{$value}};{{end}}
 
         deny all;
         location /api {
+            {{if .AppProtectDosLoadModule}}
+            app_protect_dos_api on;
+            {{end}}
             api write=off;
         }
     }
@@ -259,7 +269,7 @@ http {
     {{if .InternalRouteServer}}
     server {
         listen 443 ssl;
-        listen [::]:443 ssl;
+        {{if not .DisableIPV6}}listen [::]:443 ssl;{{end}}
         server_name {{.InternalRouteServerName}};
         ssl_certificate /etc/nginx/secrets/spiffe_cert.pem;
         ssl_certificate_key /etc/nginx/secrets/spiffe_key.pem;
@@ -287,6 +297,14 @@ stream {
     {{range $value := .StreamSnippets}}
     {{$value}}{{end}}
 
+    {{if .ResolverAddresses}}
+    resolver {{range $resolver := .ResolverAddresses}}{{$resolver}}{{end}}{{if .ResolverValid}} valid={{.ResolverValid}}{{end}}{{if not .ResolverIPV6}} ipv6=off{{end}};
+    {{if .ResolverTimeout}}resolver_timeout {{.ResolverTimeout}};{{end}}
+    {{end}}
+
+    map_hash_max_size {{.MapHashMaxSize}};
+    {{if .MapHashBucketSize}}map_hash_bucket_size {{.MapHashBucketSize}};{{end}}
+
     {{if .TLSPassthrough}}
     map $ssl_preread_server_name $dest_internal_passthrough  {
         default unix:/var/lib/nginx/passthrough-https.sock;
@@ -294,8 +312,13 @@ stream {
     }
 
     server {
-        listen 443;
-        listen [::]:443;
+        listen 443{{if .ProxyProtocol}} proxy_protocol{{end}};
+        {{if not .DisableIPV6}}listen [::]:443{{if .ProxyProtocol}} proxy_protocol{{end}};{{end}}
+
+        {{if .ProxyProtocol}}
+        {{range $setRealIPFrom := .SetRealIPFrom}}
+        set_real_ip_from {{$setRealIPFrom}};{{end}}
+        {{end}}
 
         ssl_preread on;
 

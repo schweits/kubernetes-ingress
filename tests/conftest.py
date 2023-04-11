@@ -4,10 +4,19 @@ import os
 
 import pytest
 from kubernetes.config.kube_config import KUBE_CONFIG_DEFAULT_LOCATION
-from settings import (BATCH_RESOURCES, BATCH_START, DEFAULT_DEPLOYMENT_TYPE,
-                      DEFAULT_IC_TYPE, DEFAULT_IMAGE, DEFAULT_PULL_POLICY,
-                      DEFAULT_SERVICE, NUM_REPLICAS)
-from suite.resources_utils import get_first_pod_name
+from settings import (
+    BATCH_RELOAD_NUMBER,
+    BATCH_RESOURCES,
+    BATCH_START,
+    DEFAULT_DEPLOYMENT_TYPE,
+    DEFAULT_IC_TYPE,
+    DEFAULT_IMAGE,
+    DEFAULT_PULL_POLICY,
+    DEFAULT_SERVICE,
+    NS_COUNT,
+    NUM_REPLICAS,
+)
+from suite.utils.resources_utils import get_first_pod_name
 
 
 def pytest_addoption(parser) -> None:
@@ -76,6 +85,12 @@ def pytest_addoption(parser) -> None:
         help="Show IC logs in stdout on test failure",
     )
     parser.addoption(
+        "--skip-fixture-teardown",
+        action="store",
+        default="no",
+        help="Skips teardown of test fixtures for debugging purposes",
+    )
+    parser.addoption(
         "--batch-start",
         action="store",
         default=BATCH_START,
@@ -87,16 +102,35 @@ def pytest_addoption(parser) -> None:
         default=BATCH_RESOURCES,
         help="Number of VS/Ingress resources to deploy",
     )
+    parser.addoption(
+        "--batch-reload-number",
+        action="store",
+        default=BATCH_RELOAD_NUMBER,
+        help="Number of reloads expected for batch reload test",
+    )
+    parser.addoption(
+        "--ns-count",
+        action="store",
+        default=NS_COUNT,
+        help="Number for namespaces to deploy for use in test_multiple_ns_perf.py",
+    )
+    parser.addoption(
+        "--ad-secret",
+        action="store",
+        default=os.environ.get("AZURE_AD_AUTOMATION"),
+        help="Azure active directory secret for JWKs",
+    )
 
 
 # import fixtures into pytest global namespace
-pytest_plugins = ["suite.fixtures"]
+pytest_plugins = ["suite.fixtures.fixtures", "suite.fixtures.ic_fixtures", "suite.fixtures.custom_resource_fixtures"]
 
 
 def pytest_collection_modifyitems(config, items) -> None:
     """
     Skip tests marked with '@pytest.mark.skip_for_nginx_oss' for Nginx OSS runs.
     Skip tests marked with '@pytest.mark.appprotect' for non AP images.
+    Skip tests marked with '@pytest.mark.dos' for non DOS images
 
     :param config: pytest config
     :param items: pytest collected test-items
@@ -117,7 +151,7 @@ def pytest_collection_modifyitems(config, items) -> None:
         for item in items:
             if "skip_for_loadbalancer" in item.keywords:
                 item.add_marker(skip_for_loadbalancer)
-    if "-ap" not in config.getoption("--image"):
+    if "-nap" not in config.getoption("--image"):
         appprotect = pytest.mark.skip(reason="Skip AppProtect test in non-AP image")
         for item in items:
             if "appprotect" in item.keywords:
@@ -127,11 +161,17 @@ def pytest_collection_modifyitems(config, items) -> None:
         for item in items:
             if "dos" in item.keywords:
                 item.add_marker(dos)
-    if  str(config.getoption("--batch-start")) != "True":
+    if str(config.getoption("--batch-start")) != "True":
         batch_start = pytest.mark.skip(reason="Skipping pod restart test with multiple resources")
         for item in items:
             if "batch_start" in item.keywords:
                 item.add_marker(batch_start)
+
+    if int(config.getoption("--ns-count")) <= 0:
+        multi_ns = pytest.mark.skip(reason="Skipping watch-namespaces perf. tests")
+        for item in items:
+            if "multi_ns" in item.keywords:
+                item.add_marker(multi_ns)
 
 
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
@@ -150,17 +190,13 @@ def pytest_runtest_makereport(item) -> None:
     rep = outcome.get_result()
 
     # we only look at actual failing test calls, not setup/teardown
-    if (
-        rep.when == "call"
-        and rep.failed
-        and item.config.getoption("--show-ic-logs") == "yes"
-    ):
+    if rep.when == "call" and rep.failed and item.config.getoption("--show-ic-logs") == "yes":
         pod_namespace = item.funcargs["ingress_controller_prerequisites"].namespace
         pod_name = get_first_pod_name(item.funcargs["kube_apis"].v1, pod_namespace)
         print("\n===================== IC Logs Start =====================")
-        print(
-            item.funcargs["kube_apis"].v1.read_namespaced_pod_log(
-                pod_name, pod_namespace
-            )
-        )
+        print(item.funcargs["kube_apis"].v1.read_namespaced_pod_log(pod_name, pod_namespace))
         print("\n===================== IC Logs End =====================")
+
+    if rep.when == "call" and item.config.getoption("--skip-fixture-teardown") == "yes":
+        print("\n===================== WARNING =====================")
+        print("Make sure to remove resources from this test run manually using kubectl utility\n")

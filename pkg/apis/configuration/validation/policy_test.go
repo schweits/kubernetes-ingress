@@ -46,13 +46,15 @@ func TestValidatePolicy(t *testing.T) {
 			policy: &v1.Policy{
 				Spec: v1.PolicySpec{
 					OIDC: &v1.OIDC{
-						AuthEndpoint:   "https://foo.bar/auth",
-						TokenEndpoint:  "https://foo.bar/token",
-						JWKSURI:        "https://foo.bar/certs",
-						ClientID:       "random-string",
-						ClientSecret:   "random-secret",
-						Scope:          "openid",
-						ZoneSyncLeeway: createPointerFromInt(10),
+						AuthEndpoint:      "https://foo.bar/auth",
+						AuthExtraArgs:     []string{"foo=bar"},
+						TokenEndpoint:     "https://foo.bar/token",
+						JWKSURI:           "https://foo.bar/certs",
+						ClientID:          "random-string",
+						ClientSecret:      "random-secret",
+						Scope:             "openid",
+						ZoneSyncLeeway:    createPointerFromInt(10),
+						AccessTokenEnable: true,
 					},
 				},
 			},
@@ -149,12 +151,13 @@ func TestValidatePolicyFails(t *testing.T) {
 			policy: &v1.Policy{
 				Spec: v1.PolicySpec{
 					OIDC: &v1.OIDC{
-						AuthEndpoint:  "https://foo.bar/auth",
-						TokenEndpoint: "https://foo.bar/token",
-						JWKSURI:       "https://foo.bar/certs",
-						ClientID:      "random-string",
-						ClientSecret:  "random-secret",
-						Scope:         "openid",
+						AuthEndpoint:      "https://foo.bar/auth",
+						TokenEndpoint:     "https://foo.bar/token",
+						JWKSURI:           "https://foo.bar/certs",
+						ClientID:          "random-string",
+						ClientSecret:      "random-secret",
+						Scope:             "openid",
+						AccessTokenEnable: true,
 					},
 				},
 			},
@@ -166,12 +169,13 @@ func TestValidatePolicyFails(t *testing.T) {
 			policy: &v1.Policy{
 				Spec: v1.PolicySpec{
 					OIDC: &v1.OIDC{
-						AuthEndpoint:  "https://foo.bar/auth",
-						TokenEndpoint: "https://foo.bar/token",
-						JWKSURI:       "https://foo.bar/certs",
-						ClientID:      "random-string",
-						ClientSecret:  "random-secret",
-						Scope:         "openid",
+						AuthEndpoint:      "https://foo.bar/auth",
+						TokenEndpoint:     "https://foo.bar/token",
+						JWKSURI:           "https://foo.bar/certs",
+						ClientID:          "random-string",
+						ClientSecret:      "random-secret",
+						Scope:             "openid",
+						AccessTokenEnable: true,
 					},
 				},
 			},
@@ -196,19 +200,38 @@ func TestValidatePolicyFails(t *testing.T) {
 			policy: &v1.Policy{
 				Spec: v1.PolicySpec{
 					OIDC: &v1.OIDC{
-						AuthEndpoint:   "https://foo.bar/auth",
-						TokenEndpoint:  "https://foo.bar/token",
-						JWKSURI:        "https://foo.bar/certs",
-						ClientID:       "random-string",
-						ClientSecret:   "random-secret",
-						Scope:          "openid",
-						ZoneSyncLeeway: createPointerFromInt(-1),
+						AuthEndpoint:      "https://foo.bar/auth",
+						TokenEndpoint:     "https://foo.bar/token",
+						JWKSURI:           "https://foo.bar/certs",
+						ClientID:          "random-string",
+						ClientSecret:      "random-secret",
+						Scope:             "openid",
+						ZoneSyncLeeway:    createPointerFromInt(-1),
+						AccessTokenEnable: false,
 					},
 				},
 			},
 			isPlus:     true,
 			enableOIDC: true,
 			msg:        "OIDC policy with invalid ZoneSyncLeeway",
+		},
+		{
+			policy: &v1.Policy{
+				Spec: v1.PolicySpec{
+					OIDC: &v1.OIDC{
+						AuthEndpoint:  "https://foo.bar/auth",
+						AuthExtraArgs: []string{"foo;bar"},
+						TokenEndpoint: "https://foo.bar/token",
+						JWKSURI:       "https://foo.bar/certs",
+						ClientID:      "random-string",
+						ClientSecret:  "random-secret",
+						Scope:         "openid",
+					},
+				},
+			},
+			isPlus:     true,
+			enableOIDC: true,
+			msg:        "OIDC policy with invalid AuthExtraArgs",
 		},
 	}
 	for _, test := range tests {
@@ -420,6 +443,15 @@ func TestValidateJWT(t *testing.T) {
 			},
 			msg: "jwt with token",
 		},
+		{
+			jwt: &v1.JWTAuth{
+				Realm:    "My Product API",
+				Token:    "$cookie_auth_token",
+				JwksURI:  "https://idp.com/token",
+				KeyCache: "1h",
+			},
+			msg: "jwt with jwksURI",
+		},
 	}
 	for _, test := range tests {
 		allErrs := validateJWT(test.jwt, field.NewPath("jwt"))
@@ -439,7 +471,15 @@ func TestValidateJWTFails(t *testing.T) {
 			jwt: &v1.JWTAuth{
 				Realm: "My Product API",
 			},
-			msg: "missing secret",
+			msg: "missing secret and jwksURI",
+		},
+		{
+			jwt: &v1.JWTAuth{
+				Realm:   "My Product API",
+				Secret:  "my-jwk",
+				JwksURI: "https://idp.com/token",
+			},
+			msg: "both secret and jwksURI present",
 		},
 		{
 			jwt: &v1.JWTAuth{
@@ -482,6 +522,38 @@ func TestValidateJWTFails(t *testing.T) {
 				Secret: "my-jwk",
 			},
 			msg: "invalid variable use in realm without curly braces",
+		},
+		{
+			jwt: &v1.JWTAuth{
+				Realm:    "My Product api",
+				Secret:   "my-jwk",
+				KeyCache: "1h",
+			},
+			msg: "using KeyCache with Secret",
+		},
+		{
+			jwt: &v1.JWTAuth{
+				Realm:    "My Product api",
+				JwksURI:  "https://idp.com/token",
+				KeyCache: "1k",
+			},
+			msg: "invalid suffix for KeyCache",
+		},
+		{
+			jwt: &v1.JWTAuth{
+				Realm:    "My Product api",
+				JwksURI:  "https://idp.com/token",
+				KeyCache: "oneM",
+			},
+			msg: "invalid unit for KeyCache",
+		},
+		{
+			jwt: &v1.JWTAuth{
+				Realm:    "My Product api",
+				JwksURI:  "myidp",
+				KeyCache: "1h",
+			},
+			msg: "invalid JwksURI",
 		},
 	}
 	for _, test := range tests {
@@ -871,48 +943,54 @@ func TestValidateOIDCValid(t *testing.T) {
 	}{
 		{
 			oidc: &v1.OIDC{
-				AuthEndpoint:   "https://accounts.google.com/o/oauth2/v2/auth",
-				TokenEndpoint:  "https://oauth2.googleapis.com/token",
-				JWKSURI:        "https://www.googleapis.com/oauth2/v3/certs",
-				ClientID:       "random-string",
-				ClientSecret:   "random-secret",
-				Scope:          "openid",
-				RedirectURI:    "/foo",
-				ZoneSyncLeeway: createPointerFromInt(20),
+				AuthEndpoint:      "https://accounts.google.com/o/oauth2/v2/auth",
+				AuthExtraArgs:     []string{"foo=bar", "baz=zot"},
+				TokenEndpoint:     "https://oauth2.googleapis.com/token",
+				JWKSURI:           "https://www.googleapis.com/oauth2/v3/certs",
+				ClientID:          "random-string",
+				ClientSecret:      "random-secret",
+				Scope:             "openid",
+				RedirectURI:       "/foo",
+				ZoneSyncLeeway:    createPointerFromInt(20),
+				AccessTokenEnable: true,
 			},
 			msg: "verify full oidc",
 		},
 		{
 			oidc: &v1.OIDC{
-				AuthEndpoint:  "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/authorize",
-				TokenEndpoint: "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/token",
-				JWKSURI:       "https://login.microsoftonline.com/dd-fff-eee-1234-9be/discovery/v2.0/keys",
-				ClientID:      "ff",
-				ClientSecret:  "ff",
-				Scope:         "openid+profile",
-				RedirectURI:   "/_codexe",
+				AuthEndpoint:      "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/authorize",
+				TokenEndpoint:     "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/token",
+				JWKSURI:           "https://login.microsoftonline.com/dd-fff-eee-1234-9be/discovery/v2.0/keys",
+				ClientID:          "ff",
+				ClientSecret:      "ff",
+				Scope:             "openid+profile",
+				RedirectURI:       "/_codexe",
+				AccessTokenEnable: true,
 			},
 			msg: "verify azure endpoint",
 		},
 		{
 			oidc: &v1.OIDC{
-				AuthEndpoint:  "http://keycloak.default.svc.cluster.local:8080/auth/realms/master/protocol/openid-connect/auth",
-				TokenEndpoint: "http://keycloak.default.svc.cluster.local:8080/auth/realms/master/protocol/openid-connect/token",
-				JWKSURI:       "http://keycloak.default.svc.cluster.local:8080/auth/realms/master/protocol/openid-connect/certs",
-				ClientID:      "bar",
-				ClientSecret:  "foo",
-				Scope:         "openid",
+				AuthEndpoint:      "http://keycloak.default.svc.cluster.local:8080/auth/realms/master/protocol/openid-connect/auth",
+				AuthExtraArgs:     []string{"kc_idp_hint=foo"},
+				TokenEndpoint:     "http://keycloak.default.svc.cluster.local:8080/auth/realms/master/protocol/openid-connect/token",
+				JWKSURI:           "http://keycloak.default.svc.cluster.local:8080/auth/realms/master/protocol/openid-connect/certs",
+				ClientID:          "bar",
+				ClientSecret:      "foo",
+				Scope:             "openid",
+				AccessTokenEnable: true,
 			},
 			msg: "domain with port number",
 		},
 		{
 			oidc: &v1.OIDC{
-				AuthEndpoint:  "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/auth",
-				TokenEndpoint: "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/token",
-				JWKSURI:       "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/certs",
-				ClientID:      "client",
-				ClientSecret:  "secret",
-				Scope:         "openid",
+				AuthEndpoint:      "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/auth",
+				TokenEndpoint:     "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/token",
+				JWKSURI:           "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/certs",
+				ClientID:          "client",
+				ClientSecret:      "secret",
+				Scope:             "openid",
+				AccessTokenEnable: true,
 			},
 			msg: "ip address",
 		},
@@ -940,87 +1018,107 @@ func TestValidateOIDCInvalid(t *testing.T) {
 		},
 		{
 			oidc: &v1.OIDC{
-				AuthEndpoint: "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/authorize",
-				JWKSURI:      "https://login.microsoftonline.com/dd-fff-eee-1234-9be/discovery/v2.0/keys",
-				ClientID:     "ff",
-				ClientSecret: "ff",
-				Scope:        "openid+profile",
+				AuthEndpoint:      "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/authorize",
+				JWKSURI:           "https://login.microsoftonline.com/dd-fff-eee-1234-9be/discovery/v2.0/keys",
+				ClientID:          "ff",
+				ClientSecret:      "ff",
+				Scope:             "openid+profile",
+				AccessTokenEnable: true,
 			},
 			msg: "missing required field token",
 		},
 		{
 			oidc: &v1.OIDC{
-				AuthEndpoint:  "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/authorize",
-				TokenEndpoint: "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/token",
-				ClientID:      "ff",
-				ClientSecret:  "ff",
-				Scope:         "openid+profile",
+				AuthEndpoint:      "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/authorize",
+				TokenEndpoint:     "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/token",
+				ClientID:          "ff",
+				ClientSecret:      "ff",
+				Scope:             "openid+profile",
+				AccessTokenEnable: true,
 			},
 			msg: "missing required field jwk",
 		},
 		{
 			oidc: &v1.OIDC{
-				AuthEndpoint:  "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/authorize",
-				TokenEndpoint: "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/token",
-				JWKSURI:       "https://login.microsoftonline.com/dd-fff-eee-1234-9be/discovery/v2.0/keys",
-				ClientSecret:  "ff",
-				Scope:         "openid+profile",
+				AuthEndpoint:      "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/authorize",
+				TokenEndpoint:     "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/token",
+				JWKSURI:           "https://login.microsoftonline.com/dd-fff-eee-1234-9be/discovery/v2.0/keys",
+				ClientSecret:      "ff",
+				Scope:             "openid+profile",
+				AccessTokenEnable: true,
 			},
 			msg: "missing required field clientid",
 		},
 		{
 			oidc: &v1.OIDC{
-				AuthEndpoint:  "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/authorize",
-				TokenEndpoint: "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/token",
-				JWKSURI:       "https://login.microsoftonline.com/dd-fff-eee-1234-9be/discovery/v2.0/keys",
-				ClientID:      "ff",
-				Scope:         "openid+profile",
+				AuthEndpoint:      "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/authorize",
+				TokenEndpoint:     "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/token",
+				JWKSURI:           "https://login.microsoftonline.com/dd-fff-eee-1234-9be/discovery/v2.0/keys",
+				ClientID:          "ff",
+				Scope:             "openid+profile",
+				AccessTokenEnable: true,
 			},
 			msg: "missing required field client secret",
 		},
 
 		{
 			oidc: &v1.OIDC{
-				AuthEndpoint:  "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/authorize",
-				TokenEndpoint: "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/token",
-				JWKSURI:       "https://login.microsoftonline.com/dd-fff-eee-1234-9be/discovery/v2.0/keys",
-				ClientID:      "ff",
-				ClientSecret:  "-ff-",
-				Scope:         "openid+profile",
+				AuthEndpoint:      "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/authorize",
+				TokenEndpoint:     "https://login.microsoftonline.com/dd-fff-eee-1234-9be/oauth2/v2.0/token",
+				JWKSURI:           "https://login.microsoftonline.com/dd-fff-eee-1234-9be/discovery/v2.0/keys",
+				ClientID:          "ff",
+				ClientSecret:      "-ff-",
+				Scope:             "openid+profile",
+				AccessTokenEnable: true,
 			},
 			msg: "invalid secret name",
 		},
 		{
 			oidc: &v1.OIDC{
-				AuthEndpoint:  "http://foo.\bar.com",
-				TokenEndpoint: "http://keycloak.default",
-				JWKSURI:       "http://keycloak.default",
-				ClientID:      "bar",
-				ClientSecret:  "foo",
-				Scope:         "openid",
+				AuthEndpoint:      "http://foo.\bar.com",
+				TokenEndpoint:     "http://keycloak.default",
+				JWKSURI:           "http://keycloak.default",
+				ClientID:          "bar",
+				ClientSecret:      "foo",
+				Scope:             "openid",
+				AccessTokenEnable: true,
 			},
 			msg: "invalid URL",
 		},
 		{
 			oidc: &v1.OIDC{
-				AuthEndpoint:  "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/auth",
-				TokenEndpoint: "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/token",
-				JWKSURI:       "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/certs",
-				ClientID:      "$foo$bar",
-				ClientSecret:  "secret",
-				Scope:         "openid",
+				AuthEndpoint:      "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/auth",
+				TokenEndpoint:     "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/token",
+				JWKSURI:           "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/certs",
+				ClientID:          "$foo$bar",
+				ClientSecret:      "secret",
+				Scope:             "openid",
+				AccessTokenEnable: true,
 			},
 			msg: "invalid chars in clientID",
 		},
 		{
 			oidc: &v1.OIDC{
-				AuthEndpoint:   "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/auth",
-				TokenEndpoint:  "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/token",
-				JWKSURI:        "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/certs",
-				ClientID:       "foobar",
-				ClientSecret:   "secret",
-				Scope:          "openid",
-				ZoneSyncLeeway: createPointerFromInt(-1),
+				AuthEndpoint:  "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/auth",
+				AuthExtraArgs: []string{"foo;bar"},
+				TokenEndpoint: "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/token",
+				JWKSURI:       "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/certs",
+				ClientID:      "foobar",
+				ClientSecret:  "secret",
+				Scope:         "openid",
+			},
+			msg: "invalid chars in authExtraArgs",
+		},
+		{
+			oidc: &v1.OIDC{
+				AuthEndpoint:      "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/auth",
+				TokenEndpoint:     "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/token",
+				JWKSURI:           "http://127.0.0.1:8080/auth/realms/master/protocol/openid-connect/certs",
+				ClientID:          "foobar",
+				ClientSecret:      "secret",
+				Scope:             "openid",
+				ZoneSyncLeeway:    createPointerFromInt(-1),
+				AccessTokenEnable: true,
 			},
 			msg: "invalid zoneSyncLeeway value",
 		},
@@ -1097,6 +1195,27 @@ func TestValidateURL(t *testing.T) {
 	}
 }
 
+func TestValidateQueryStringt(t *testing.T) {
+	t.Parallel()
+	validInput := []string{"foo=bar", "foo", "foo=bar&baz=zot", "foo=bar&foo=baz", "foo=bar%3Bbaz"}
+
+	for _, test := range validInput {
+		allErrs := validateQueryString(test, field.NewPath("authExtraArgs"))
+		if len(allErrs) != 0 {
+			t.Errorf("validateQueryString(%q) returned errors %v for valid input", allErrs, test)
+		}
+	}
+
+	invalidInput := []string{"foo=bar;baz"}
+
+	for _, test := range invalidInput {
+		allErrs := validateQueryString(test, field.NewPath("authExtraArgs"))
+		if len(allErrs) == 0 {
+			t.Errorf("validateQueryString(%q) didn't return error for invalid input", test)
+		}
+	}
+}
+
 func TestValidateWAF(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -1136,7 +1255,66 @@ func TestValidateWAF(t *testing.T) {
 	}
 }
 
-func TestValidateWAFInvalid(t *testing.T) {
+func TestValidateWAF_FailsOnPresentBothApBundleAndApPolicy(t *testing.T) {
+	t.Parallel()
+
+	waf := &v1.WAF{
+		Enable:   true,
+		ApBundle: "bundle.tgz",
+		ApPolicy: "default/policy_name",
+	}
+
+	allErrs := validateWAF(waf, field.NewPath("waf"))
+	if len(allErrs) == 0 {
+		t.Errorf("want error, got %v", allErrs)
+	}
+}
+
+func TestValidateWAF_FailsOnInvalidApBundlePath(t *testing.T) {
+	t.Parallel()
+
+	tt := []struct {
+		waf *v1.WAF
+	}{
+		{
+			waf: &v1.WAF{
+				ApBundle: ".",
+			},
+		},
+		{
+			waf: &v1.WAF{
+				ApBundle: "../bundle.tgz",
+			},
+		},
+		{
+			waf: &v1.WAF{
+				ApBundle: "/bundle.tgz",
+			},
+		},
+	}
+
+	for _, tc := range tt {
+		allErrs := validateWAF(tc.waf, field.NewPath("waf"))
+		if len(allErrs) == 0 {
+			t.Errorf("want error, got %v", allErrs)
+		}
+	}
+}
+
+func TestValidateWAF_PassesOnValidBundleName(t *testing.T) {
+	t.Parallel()
+
+	waf := &v1.WAF{
+		Enable:   true,
+		ApBundle: "ap-bundle.tgz",
+	}
+	gotErrors := validateWAF(waf, field.NewPath("waf"))
+	if len(gotErrors) != 0 {
+		t.Errorf("want no errors, got %v", gotErrors)
+	}
+}
+
+func TestValidateWAF_FailsOnInvalidApPolicy(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		waf *v1.WAF

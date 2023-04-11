@@ -6,6 +6,7 @@ type TransportServerConfig struct {
 	Upstreams      []StreamUpstream
 	StreamSnippets []string
 	Match          *Match
+	DisableIPV6    bool
 }
 
 // StreamUpstream defines a stream upstream.
@@ -14,6 +15,7 @@ type StreamUpstream struct {
 	Servers             []StreamUpstreamServer
 	UpstreamLabels      UpstreamLabels
 	LoadBalancingMethod string
+	Resolve             bool
 }
 
 // StreamUpstreamServer defines a stream upstream server.
@@ -43,6 +45,15 @@ type StreamServer struct {
 	ProxyNextUpstreamTries   int
 	HealthCheck              *StreamHealthCheck
 	ServerSnippets           []string
+	DisableIPV6              bool
+	SSL                      *StreamSSL
+}
+
+// StreamSSL defines SSL configuration for a server.
+type StreamSSL struct {
+	Enabled        bool
+	Certificate    string
+	CertificateKey string
 }
 
 // StreamHealthCheck defines a health check for a StreamUpstream in a StreamServer.

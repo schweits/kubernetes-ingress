@@ -71,12 +71,12 @@ func TestValidateTransportServerFails(t *testing.T) {
 func TestValidateTransportServerUpstreams(t *testing.T) {
 	tests := []struct {
 		upstreams             []v1alpha1.Upstream
-		expectedUpstreamNames sets.String
+		expectedUpstreamNames sets.Set[string]
 		msg                   string
 	}{
 		{
 			upstreams:             []v1alpha1.Upstream{},
-			expectedUpstreamNames: sets.String{},
+			expectedUpstreamNames: sets.Set[string]{},
 			msg:                   "no upstreams",
 		},
 		{
@@ -114,7 +114,7 @@ func TestValidateTransportServerUpstreams(t *testing.T) {
 func TestValidateTransportServerUpstreamsFails(t *testing.T) {
 	tests := []struct {
 		upstreams             []v1alpha1.Upstream
-		expectedUpstreamNames sets.String
+		expectedUpstreamNames sets.Set[string]
 		msg                   string
 	}{
 		{
@@ -125,7 +125,7 @@ func TestValidateTransportServerUpstreamsFails(t *testing.T) {
 					Port:    80,
 				},
 			},
-			expectedUpstreamNames: sets.String{},
+			expectedUpstreamNames: sets.Set[string]{},
 			msg:                   "invalid upstream name",
 		},
 		{
@@ -921,6 +921,60 @@ func TestValidateMatchExpect(t *testing.T) {
 		allErrs := validateMatchExpect(input, field.NewPath("expect"))
 		if len(allErrs) == 0 {
 			t.Errorf("validateMatchExpect(%q) returned no errors for invalid input", input)
+		}
+	}
+}
+
+func TestValidateTsTLS(t *testing.T) {
+	t.Parallel()
+	validTLSes := []*v1alpha1.TLS{
+		nil,
+		{
+			Secret: "my-secret",
+		},
+	}
+
+	for _, tls := range validTLSes {
+		allErrs := validateTLS(tls, false, field.NewPath("tls"))
+		if len(allErrs) > 0 {
+			t.Errorf("validateTLS() returned errors %v for valid input %v", allErrs, tls)
+		}
+	}
+
+	tests := []struct {
+		tls              *v1alpha1.TLS
+		isTLSPassthrough bool
+	}{
+		{
+			tls: &v1alpha1.TLS{
+				Secret: "-",
+			},
+			isTLSPassthrough: false,
+		},
+		{
+			tls: &v1alpha1.TLS{
+				Secret: "a/b",
+			},
+			isTLSPassthrough: false,
+		},
+		{
+			tls: &v1alpha1.TLS{
+				Secret: "my-secret",
+			},
+			isTLSPassthrough: true,
+		},
+		{
+			tls: &v1alpha1.TLS{
+				Secret: "",
+			},
+			isTLSPassthrough: false,
+		},
+	}
+
+	for _, test := range tests {
+		allErrs := validateTLS(test.tls, test.isTLSPassthrough, field.NewPath("tls"))
+		if len(allErrs) == 0 {
+			t.Errorf("validateTLS() returned no errors for invalid input %v", test)
 		}
 	}
 }

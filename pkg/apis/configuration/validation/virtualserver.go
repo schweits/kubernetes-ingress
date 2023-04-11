@@ -21,6 +21,7 @@ type VirtualServerValidator struct {
 	isPlus               bool
 	isDosEnabled         bool
 	isCertManagerEnabled bool
+	isExternalDNSEnabled bool
 }
 
 // IsPlus modifies the VirtualServerValidator to set the isPlus option.
@@ -44,12 +45,20 @@ func IsCertManagerEnabled(cm bool) VsvOption {
 	}
 }
 
+// IsExternalDNSEnabled modifies the VirtualServerValidator to set the isExternalDNSEnabled option.
+func IsExternalDNSEnabled(ed bool) VsvOption {
+	return func(v *VirtualServerValidator) {
+		v.isExternalDNSEnabled = ed
+	}
+}
+
 // NewVirtualServerValidator creates a new VirtualServerValidator.
 func NewVirtualServerValidator(opts ...VsvOption) *VirtualServerValidator {
 	vsv := VirtualServerValidator{
 		isPlus:               false,
 		isDosEnabled:         false,
 		isCertManagerEnabled: false,
+		isExternalDNSEnabled: false,
 	}
 	for _, o := range opts {
 		o(&vsv)
@@ -78,8 +87,12 @@ func (vsv *VirtualServerValidator) validateVirtualServerSpec(spec *v1.VirtualSer
 
 	allErrs = append(allErrs, validateDos(vsv.isDosEnabled, spec.Dos, fieldPath.Child("dos"))...)
 
+	allErrs = append(allErrs, vsv.validateExternalDNS(&spec.ExternalDNS, fieldPath.Child("externalDNS"))...)
+
 	return allErrs
 }
+
+const wildcardPrefix = "*."
 
 func validateHost(host string, fieldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
@@ -88,8 +101,14 @@ func validateHost(host string, fieldPath *field.Path) field.ErrorList {
 		return append(allErrs, field.Required(fieldPath, ""))
 	}
 
-	for _, msg := range validation.IsDNS1123Subdomain(host) {
-		allErrs = append(allErrs, field.Invalid(fieldPath, host, msg))
+	if strings.HasPrefix(host, wildcardPrefix) {
+		for _, msg := range validation.IsWildcardDNS1123Subdomain(host) {
+			allErrs = append(allErrs, field.Invalid(fieldPath, host, msg))
+		}
+	} else {
+		for _, msg := range validation.IsDNS1123Subdomain(host) {
+			allErrs = append(allErrs, field.Invalid(fieldPath, host, msg))
+		}
 	}
 
 	return allErrs
@@ -97,7 +116,7 @@ func validateHost(host string, fieldPath *field.Path) field.ErrorList {
 
 func validatePolicies(policies []v1.PolicyReference, fieldPath *field.Path, namespace string) field.ErrorList {
 	allErrs := field.ErrorList{}
-	policyKeys := sets.String{}
+	policyKeys := sets.Set[string]{}
 
 	for i, p := range policies {
 		idxPath := fieldPath.Index(i)
@@ -184,6 +203,21 @@ func validateDos(isDosEnabled bool, dos string, fieldPath *field.Path) field.Err
 
 	for _, msg := range validation.IsQualifiedName(dos) {
 		allErrs = append(allErrs, field.Invalid(fieldPath, dos, msg))
+	}
+
+	return allErrs
+}
+
+func (vsv *VirtualServerValidator) validateExternalDNS(ed *v1.ExternalDNS, fieldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if ed == nil || !ed.Enable {
+		// valid, externalDNS is not required
+		return allErrs
+	}
+
+	if !vsv.isExternalDNSEnabled {
+		allErrs = append(allErrs, field.Forbidden(fieldPath, "field requires externalDNS enablement"))
 	}
 
 	return allErrs
@@ -309,6 +343,7 @@ func validateUpstreamHealthCheck(hc *v1.HealthCheck, typeName string, fieldPath 
 	allErrs = append(allErrs, validateTime(hc.ReadTimeout, fieldPath.Child("read-timeout"))...)
 	allErrs = append(allErrs, validateTime(hc.SendTimeout, fieldPath.Child("send-timeout"))...)
 	allErrs = append(allErrs, validateStatusMatch(hc.StatusMatch, fieldPath.Child("statusMatch"))...)
+	allErrs = append(allErrs, validateTime(hc.KeepaliveTime, fieldPath.Child("keepalive-time"))...)
 
 	for i, header := range hc.Headers {
 		idxPath := fieldPath.Child("headers").Index(i)
@@ -539,9 +574,9 @@ func isValidHeaderValue(s string) []string {
 	return nil
 }
 
-func (vsv *VirtualServerValidator) validateUpstreams(upstreams []v1.Upstream, fieldPath *field.Path) (allErrs field.ErrorList, upstreamNames sets.String) {
+func (vsv *VirtualServerValidator) validateUpstreams(upstreams []v1.Upstream, fieldPath *field.Path) (allErrs field.ErrorList, upstreamNames sets.Set[string]) {
 	allErrs = field.ErrorList{}
-	upstreamNames = sets.String{}
+	upstreamNames = sets.Set[string]{}
 
 	for i, u := range upstreams {
 		idxPath := fieldPath.Index(i)
@@ -610,7 +645,7 @@ var validNextUpstreamParams = map[string]bool{
 // validateNextUpstream checks the values given for passing queries to a upstream
 func validateNextUpstream(nextUpstream string, fieldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allParams := sets.String{}
+	allParams := sets.Set[string]{}
 	if nextUpstream == "" {
 		return allErrs
 	}
@@ -656,10 +691,10 @@ func validateDNS1035Label(name string, fieldPath *field.Path) field.ErrorList {
 	return allErrs
 }
 
-func (vsv *VirtualServerValidator) validateVirtualServerRoutes(routes []v1.Route, fieldPath *field.Path, upstreamNames sets.String, namespace string) field.ErrorList {
+func (vsv *VirtualServerValidator) validateVirtualServerRoutes(routes []v1.Route, fieldPath *field.Path, upstreamNames sets.Set[string], namespace string) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	allPaths := sets.String{}
+	allPaths := sets.Set[string]{}
 
 	for i, r := range routes {
 		idxPath := fieldPath.Index(i)
@@ -678,7 +713,7 @@ func (vsv *VirtualServerValidator) validateVirtualServerRoutes(routes []v1.Route
 	return allErrs
 }
 
-func (vsv *VirtualServerValidator) validateRoute(route v1.Route, fieldPath *field.Path, upstreamNames sets.String, isRouteFieldForbidden bool, namespace string) field.ErrorList {
+func (vsv *VirtualServerValidator) validateRoute(route v1.Route, fieldPath *field.Path, upstreamNames sets.Set[string], isRouteFieldForbidden bool, namespace string) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	allErrs = append(allErrs, validateRoutePath(route.Path, fieldPath.Child("path"))...)
@@ -876,7 +911,7 @@ var validRedirectVariableNames = map[string]bool{
 	"host":                   true,
 }
 
-func (vsv *VirtualServerValidator) validateAction(action *v1.Action, fieldPath *field.Path, upstreamNames sets.String, path string, internal bool) field.ErrorList {
+func (vsv *VirtualServerValidator) validateAction(action *v1.Action, fieldPath *field.Path, upstreamNames sets.Set[string], path string, internal bool) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if countActions(action) != 1 {
@@ -1019,7 +1054,7 @@ func validateRouteField(value string, fieldPath *field.Path) field.ErrorList {
 	return allErrs
 }
 
-func validateReferencedUpstream(name string, fieldPath *field.Path, upstreamNames sets.String) field.ErrorList {
+func validateReferencedUpstream(name string, fieldPath *field.Path, upstreamNames sets.Set[string]) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	upstreamErrs := validateUpstreamName(name, fieldPath)
@@ -1032,7 +1067,7 @@ func validateReferencedUpstream(name string, fieldPath *field.Path, upstreamName
 	return allErrs
 }
 
-func (vsv *VirtualServerValidator) validateActionProxy(p *v1.ActionProxy, fieldPath *field.Path, upstreamNames sets.String, path string, internal bool) field.ErrorList {
+func (vsv *VirtualServerValidator) validateActionProxy(p *v1.ActionProxy, fieldPath *field.Path, upstreamNames sets.Set[string], path string, internal bool) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	allErrs = append(allErrs, validateReferencedUpstream(p.Upstream, fieldPath.Child("upstream"), upstreamNames)...)
@@ -1227,7 +1262,7 @@ func validateIgnoreHeaders(ignoreHeaders []string, fieldPath *field.Path) field.
 	return allErrs
 }
 
-func (vsv *VirtualServerValidator) validateSplits(splits []v1.Split, fieldPath *field.Path, upstreamNames sets.String, path string) field.ErrorList {
+func (vsv *VirtualServerValidator) validateSplits(splits []v1.Split, fieldPath *field.Path, upstreamNames sets.Set[string], path string) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(splits) < 2 {
@@ -1296,7 +1331,7 @@ func validateRegexPath(path string, fieldPath *field.Path) field.ErrorList {
 }
 
 const (
-	pathFmt    = `/[^\s{};]*`
+	pathFmt    = `/[^\s{};\\]*`
 	pathErrMsg = "must start with / and must not include any whitespace character, `{`, `}` or `;`"
 )
 
@@ -1339,7 +1374,7 @@ func validateGrpcService(service string, fieldPath *field.Path) field.ErrorList 
 	return allErrs
 }
 
-func (vsv *VirtualServerValidator) validateMatch(match v1.Match, fieldPath *field.Path, upstreamNames sets.String, path string) field.ErrorList {
+func (vsv *VirtualServerValidator) validateMatch(match v1.Match, fieldPath *field.Path, upstreamNames sets.Set[string], path string) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(match.Conditions) == 0 {
@@ -1521,10 +1556,10 @@ func isRegexOrExactMatch(path string) bool {
 	return strings.HasPrefix(path, "~") || strings.HasPrefix(path, "=")
 }
 
-func (vsv *VirtualServerValidator) validateVirtualServerRouteSubroutes(routes []v1.Route, fieldPath *field.Path, upstreamNames sets.String, vsPath string, namespace string) field.ErrorList {
+func (vsv *VirtualServerValidator) validateVirtualServerRouteSubroutes(routes []v1.Route, fieldPath *field.Path, upstreamNames sets.Set[string], vsPath string, namespace string) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	allPaths := sets.String{}
+	allPaths := sets.Set[string]{}
 
 	if isRegexOrExactMatch(vsPath) {
 		if len(routes) != 1 {

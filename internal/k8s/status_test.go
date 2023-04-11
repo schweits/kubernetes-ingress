@@ -44,10 +44,12 @@ func TestUpdateTransportServerStatus(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error adding TransportServer to the transportserver lister: %v", err)
 	}
+	nsi := make(map[string]*namespacedInformer)
+	nsi["default"] = &namespacedInformer{transportServerLister: tsLister}
 	su := statusUpdater{
-		transportServerLister: tsLister,
-		confClient:            fakeClient,
-		keyFunc:               cache.DeletionHandlingMetaNamespaceKeyFunc,
+		namespacedInformers: nsi,
+		confClient:          fakeClient,
+		keyFunc:             cache.DeletionHandlingMetaNamespaceKeyFunc,
 	}
 
 	err = su.UpdateTransportServerStatus(ts, "after status", "after reason", "after message")
@@ -103,10 +105,12 @@ func TestUpdateTransportServerStatusIgnoreNoChange(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error adding TransportServer to the transportserver lister: %v", err)
 	}
+	nsi := make(map[string]*namespacedInformer)
+	nsi["default"] = &namespacedInformer{transportServerLister: tsLister}
 	su := statusUpdater{
-		transportServerLister: tsLister,
-		confClient:            fakeClient,
-		keyFunc:               cache.DeletionHandlingMetaNamespaceKeyFunc,
+		namespacedInformers: nsi,
+		confClient:          fakeClient,
+		keyFunc:             cache.DeletionHandlingMetaNamespaceKeyFunc,
 	}
 
 	err = su.UpdateTransportServerStatus(ts, "same status", "same reason", "same message")
@@ -156,10 +160,13 @@ func TestUpdateTransportServerStatusMissingTransportServer(t *testing.T) {
 		nil,
 	)
 
+	nsi := make(map[string]*namespacedInformer)
+	nsi[""] = &namespacedInformer{transportServerLister: tsLister}
+
 	su := statusUpdater{
-		transportServerLister: tsLister,
-		confClient:            fakeClient,
-		keyFunc:               cache.DeletionHandlingMetaNamespaceKeyFunc,
+		namespacedInformers: nsi,
+		confClient:          fakeClient,
+		keyFunc:             cache.DeletionHandlingMetaNamespaceKeyFunc,
 		externalEndpoints: []conf_v1.ExternalEndpoint{
 			{
 				IP:    "123.123.123.123",
@@ -186,8 +193,8 @@ func TestStatusUpdateWithExternalStatusAndExternalService(t *testing.T) {
 			Namespace: "namespace",
 		},
 		Status: networking.IngressStatus{
-			LoadBalancer: v1.LoadBalancerStatus{
-				Ingress: []v1.LoadBalancerIngress{
+			LoadBalancer: networking.IngressLoadBalancerStatus{
+				Ingress: []networking.IngressLoadBalancerIngress{
 					{
 						IP: "1.2.3.4",
 					},
@@ -210,12 +217,15 @@ func TestStatusUpdateWithExternalStatusAndExternalService(t *testing.T) {
 		t.Errorf("Error adding Ingress to the ingress lister: %v", err)
 	}
 
+	nsi := make(map[string]*namespacedInformer)
+	nsi[""] = &namespacedInformer{ingressLister: ingLister}
+
 	su := statusUpdater{
 		client:                fakeClient,
 		namespace:             "namespace",
 		externalServiceName:   "service-name",
 		externalStatusAddress: "123.123.123.123",
-		ingressLister:         &ingLister,
+		namespacedInformers:   nsi,
 		keyFunc:               cache.DeletionHandlingMetaNamespaceKeyFunc,
 	}
 	err = su.ClearIngressStatus(ing)
@@ -289,8 +299,8 @@ func TestStatusUpdateWithExternalStatusAndIngressLink(t *testing.T) {
 			Namespace: "namespace",
 		},
 		Status: networking.IngressStatus{
-			LoadBalancer: v1.LoadBalancerStatus{
-				Ingress: []v1.LoadBalancerIngress{
+			LoadBalancer: networking.IngressLoadBalancerStatus{
+				Ingress: []networking.IngressLoadBalancerIngress{
 					{
 						IP: "1.2.3.4",
 					},
@@ -313,11 +323,14 @@ func TestStatusUpdateWithExternalStatusAndIngressLink(t *testing.T) {
 		t.Errorf("Error adding Ingress to the ingress lister: %v", err)
 	}
 
+	nsi := make(map[string]*namespacedInformer)
+	nsi[""] = &namespacedInformer{ingressLister: ingLister}
+
 	su := statusUpdater{
 		client:                fakeClient,
 		namespace:             "namespace",
 		externalStatusAddress: "",
-		ingressLister:         &ingLister,
+		namespacedInformers:   nsi,
 		keyFunc:               cache.DeletionHandlingMetaNamespaceKeyFunc,
 	}
 
@@ -390,22 +403,42 @@ func checkStatus(expected string, actual networking.Ingress) bool {
 }
 
 func TestGenerateExternalEndpointsFromStatus(t *testing.T) {
-	su := statusUpdater{
-		status: []v1.LoadBalancerIngress{
-			{
-				IP: "8.8.8.8",
+	tests := []struct {
+		su                statusUpdater
+		expectedEndpoints []conf_v1.ExternalEndpoint
+	}{
+		{
+			su: statusUpdater{
+				status: []networking.IngressLoadBalancerIngress{
+					{
+						IP: "8.8.8.8",
+					},
+				},
+			},
+			expectedEndpoints: []conf_v1.ExternalEndpoint{
+				{IP: "8.8.8.8", Ports: ""},
+			},
+		},
+		{
+			su: statusUpdater{
+				status: []networking.IngressLoadBalancerIngress{
+					{
+						Hostname: "my-loadbalancer.example.com",
+					},
+				},
+			},
+			expectedEndpoints: []conf_v1.ExternalEndpoint{
+				{Hostname: "my-loadbalancer.example.com", Ports: ""},
 			},
 		},
 	}
+	for _, test := range tests {
+		endpoints := test.su.generateExternalEndpointsFromStatus(test.su.status)
 
-	expectedEndpoints := []conf_v1.ExternalEndpoint{
-		{IP: "8.8.8.8", Ports: ""},
-	}
+		if !reflect.DeepEqual(endpoints, test.expectedEndpoints) {
+			t.Errorf("generateExternalEndpointsFromStatus(%v) returned %v but expected %v", test.su.status, endpoints, test.expectedEndpoints)
+		}
 
-	endpoints := su.generateExternalEndpointsFromStatus(su.status)
-
-	if !reflect.DeepEqual(endpoints, expectedEndpoints) {
-		t.Errorf("generateExternalEndpointsFromStatus(%v) returned %v but expected %v", su.status, endpoints, expectedEndpoints)
 	}
 }
 

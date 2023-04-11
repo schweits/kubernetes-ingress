@@ -106,6 +106,7 @@ The table below shows various configuration options for the tests. If you use Py
 | `--kubeconfig` | `N/A` | An absolute path to a kubeconfig file. | `~/.kube/config` or the value of the `KUBECONFIG` env variable |
 | `N/A` | `KUBE_CONFIG_FOLDER`, not supported by `run-tests-in-kind` target. | A path to a folder with a kubeconfig file. | `~/.kube/` |
 | `--show-ic-logs` | `SHOW_IC_LOGS` | A flag to control accumulating IC logs in stdout. | `no` |
+| `--skip-fixture-teardown` | `N/A` | A flag to skip test fixture teardown for debugging. | `no` |
 | `N/A` | `PYTEST_ARGS` | Any additional pytest command-line arguments (i.e `-m "smoke"`) | `""` |
 
 If you would like to use an IDE (such as PyCharm) to run the tests, use the [pytest.ini](pytest.ini) file to set the command-line arguments.
@@ -114,3 +115,7 @@ Tests are marked with custom markers. The markers allow to logically split all t
 ```bash
 $ python3 -m pytest --markers
 ```
+
+## Test Containers
+
+The source code for the tests containers used in some tests, for example the [transport-server-tcp-load-balance](./data/transport-server-tcp-load-balance/standard/service_deployment.yaml) is located at [kic-test-containers](https://github.com/nginxinc/kic-test-containers).

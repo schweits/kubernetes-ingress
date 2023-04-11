@@ -59,7 +59,27 @@ func (tsv *TransportServerValidator) validateTransportServerSpec(spec *v1alpha1.
 
 	allErrs = append(allErrs, validateSnippets(spec.StreamSnippets, fieldPath.Child("streamSnippets"), tsv.snippetsEnabled)...)
 
+	allErrs = append(allErrs, validateTLS(spec.TLS, isTLSPassthroughListener, fieldPath.Child("tls"))...)
+
 	return allErrs
+}
+
+func validateTLS(tls *v1alpha1.TLS, isTLSPassthrough bool, fieldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if tls == nil {
+		return allErrs
+	}
+
+	if isTLSPassthrough {
+		return append(allErrs, field.Forbidden(fieldPath, "cannot specify secret for tls passthrough"))
+	}
+
+	if tls.Secret == "" {
+		return append(allErrs, field.Required(fieldPath, "must specify secret for tls"))
+	}
+
+	return append(allErrs, validateSecretName(tls.Secret, fieldPath.Child("secret"))...)
 }
 
 func validateSnippets(serverSnippet string, fieldPath *field.Path, snippetsEnabled bool) field.ErrorList {
@@ -151,9 +171,9 @@ func validateListenerProtocol(protocol string, fieldPath *field.Path) field.Erro
 	return allErrs
 }
 
-func validateTransportServerUpstreams(upstreams []v1alpha1.Upstream, fieldPath *field.Path, isPlus bool) (allErrs field.ErrorList, upstreamNames sets.String) {
+func validateTransportServerUpstreams(upstreams []v1alpha1.Upstream, fieldPath *field.Path, isPlus bool) (allErrs field.ErrorList, upstreamNames sets.Set[string]) {
 	allErrs = field.ErrorList{}
-	upstreamNames = sets.String{}
+	upstreamNames = sets.Set[string]{}
 
 	for i, u := range upstreams {
 		idxPath := fieldPath.Index(i)
@@ -399,7 +419,7 @@ func validateUDPUpstreamParameter(parameter *int, fieldPath *field.Path, protoco
 	return validatePositiveIntOrZeroFromPointer(parameter, fieldPath)
 }
 
-func validateTransportServerAction(action *v1alpha1.Action, fieldPath *field.Path, upstreamNames sets.String) field.ErrorList {
+func validateTransportServerAction(action *v1alpha1.Action, fieldPath *field.Path, upstreamNames sets.Set[string]) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if action.Pass == "" {

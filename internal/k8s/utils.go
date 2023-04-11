@@ -21,7 +21,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/golang/glog"
+	discovery_v1 "k8s.io/api/discovery/v1"
+
 	v1 "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
 
@@ -38,7 +39,7 @@ type storeToIngressLister struct {
 	cache.Store
 }
 
-// GetByKeySafe calls Store.GetByKeySafe and returns a copy of the ingress so it is
+// GetByKeySafe calls Store.GetByKeySafe and returns a copy of the ingress, so it is
 // safe to modify.
 func (s *storeToIngressLister) GetByKeySafe(key string) (ing *networking.Ingress, exists bool, err error) {
 	item, exists, err := s.Store.GetByKey(key)
@@ -70,7 +71,7 @@ func (s *storeToConfigMapLister) List() (cfgm v1.ConfigMapList, err error) {
 	return cfgm, nil
 }
 
-// indexerToPodLister makes a Indexer that lists Pods.
+// indexerToPodLister makes an Indexer that lists Pods.
 type indexerToPodLister struct {
 	cache.Indexer
 }
@@ -83,20 +84,23 @@ func (ipl indexerToPodLister) ListByNamespace(ns string, selector labels.Selecto
 	return pods, err
 }
 
-// storeToEndpointLister makes a Store that lists Endpoints
-type storeToEndpointLister struct {
+// Store for EndpointSlices
+type storeToEndpointSliceLister struct {
 	cache.Store
 }
 
-// GetServiceEndpoints returns the endpoints of a service, matched on service name.
-func (s *storeToEndpointLister) GetServiceEndpoints(svc *v1.Service) (ep v1.Endpoints, err error) {
-	for _, m := range s.Store.List() {
-		ep = *m.(*v1.Endpoints)
-		if svc.Name == ep.Name && svc.Namespace == ep.Namespace {
-			return ep, nil
+// GetServiceEndpointSlices returns the endpoints of a service, matched on service name.
+func (s *storeToEndpointSliceLister) GetServiceEndpointSlices(svc *v1.Service) (endpointSlices []discovery_v1.EndpointSlice, err error) {
+	for _, epStore := range s.Store.List() {
+		ep := *epStore.(*discovery_v1.EndpointSlice)
+		if svc.Name == ep.Labels["kubernetes.io/service-name"] && svc.Namespace == ep.Namespace {
+			endpointSlices = append(endpointSlices, ep)
 		}
 	}
-	return ep, fmt.Errorf("could not find endpoints for service: %v", svc.Name)
+	if len(endpointSlices) > 0 {
+		return endpointSlices, nil
+	}
+	return endpointSlices, fmt.Errorf("could not find endpointslices for service: %v", svc.Name)
 }
 
 // findPort locates the container port for the given pod and portName.  If the
@@ -132,6 +136,10 @@ func isMaster(ing *networking.Ingress) bool {
 	return ing.Annotations["nginx.org/mergeable-ingress-type"] == "master"
 }
 
+func isChallengeIngress(ing *networking.Ingress) bool {
+	return ing.Labels["acme.cert-manager.io/http01-solver"] == "true"
+}
+
 // hasChanges determines if current ingress has changes compared to old ingress
 func hasChanges(old *networking.Ingress, current *networking.Ingress) bool {
 	old.Status.LoadBalancer.Ingress = current.Status.LoadBalancer.Ingress
@@ -160,7 +168,5 @@ func GetK8sVersion(client kubernetes.Interface) (v *version.Version, err error) 
 	if err != nil {
 		return nil, fmt.Errorf("unexpected error parsing running Kubernetes version: %w", err)
 	}
-	glog.V(3).Infof("Kubernetes version: %v", runningVersion)
-
 	return runningVersion, nil
 }

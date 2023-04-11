@@ -107,7 +107,7 @@ http {
         set $service "";
 
         listen 80 default_server{{if .ProxyProtocol}} proxy_protocol{{end}};
-        listen [::]:80 default_server{{if .ProxyProtocol}} proxy_protocol{{end}};
+        {{if not .DisableIPV6}}listen [::]:80 default_server{{if .ProxyProtocol}} proxy_protocol{{end}};{{end}}
 
         {{if .TLSPassthrough}}
         listen unix:/var/lib/nginx/passthrough-https.sock ssl default_server{{if .HTTP2}} http2{{end}} proxy_protocol;
@@ -115,7 +115,7 @@ http {
         real_ip_header proxy_protocol;
         {{else}}
         listen 443 ssl default_server{{if .HTTP2}} http2{{end}}{{if .ProxyProtocol}} proxy_protocol{{end}};
-        listen [::]:443 ssl default_server{{if .HTTP2}} http2{{end}}{{if .ProxyProtocol}} proxy_protocol{{end}};
+        {{if not .DisableIPV6}}listen [::]:443 ssl default_server{{if .HTTP2}} http2{{end}}{{if .ProxyProtocol}} proxy_protocol{{end}};{{end}}
         {{end}}
 
         {{if .SSLRejectHandshake}}
@@ -156,7 +156,7 @@ http {
     # stub_status
     server {
         listen {{.NginxStatusPort}};
-        listen [::]:{{.NginxStatusPort}};
+        {{if not .DisableIPV6}}listen [::]:{{.NginxStatusPort}};{{end}}
 
         {{range $value := .NginxStatusAllowCIDRs}}
         allow {{$value}};{{end}}
@@ -210,6 +210,18 @@ http {
 
         return 418;
     }
+    {{if .InternalRouteServer}}
+    server {
+        listen 443 ssl;
+        {{if not .DisableIPV6}}listen [::]:443 ssl;{{end}}
+        server_name {{.InternalRouteServerName}};
+        ssl_certificate /etc/nginx/secrets/spiffe_cert.pem;
+        ssl_certificate_key /etc/nginx/secrets/spiffe_key.pem;
+        ssl_client_certificate /etc/nginx/secrets/spiffe_rootca.pem;
+        ssl_verify_client on;
+        ssl_verify_depth 25;
+    }
+    {{end}}
 }
 
 stream {
@@ -229,6 +241,9 @@ stream {
     {{range $value := .StreamSnippets}}
     {{$value}}{{end}}
 
+    map_hash_max_size {{.MapHashMaxSize}};
+    {{if .MapHashBucketSize}}map_hash_bucket_size {{.MapHashBucketSize}};{{end}}
+
     {{if .TLSPassthrough}}
     map $ssl_preread_server_name $dest_internal_passthrough  {
         default unix:/var/lib/nginx/passthrough-https.sock;
@@ -236,8 +251,14 @@ stream {
     }
 
     server {
-        listen 443;
-        listen [::]:443;
+        listen 443{{if .ProxyProtocol}} proxy_protocol{{end}};
+        {{if not .DisableIPV6}}listen [::]:443{{if .ProxyProtocol}} proxy_protocol{{end}};{{end}}
+
+
+        {{if .ProxyProtocol}}
+        {{range $setRealIPFrom := .SetRealIPFrom}}
+        set_real_ip_from {{$setRealIPFrom}};{{end}}
+        {{end}}
 
         ssl_preread on;
 

@@ -68,6 +68,7 @@ type Server struct {
 	LimitReqOptions           LimitReqOptions
 	LimitReqs                 []LimitReq
 	JWTAuth                   *JWTAuth
+	BasicAuth                 *BasicAuth
 	IngressMTLS               *IngressMTLS
 	EgressMTLS                *EgressMTLS
 	OIDC                      *OIDC
@@ -76,6 +77,7 @@ type Server struct {
 	PoliciesErrorReturn       *Return
 	VSNamespace               string
 	VSName                    string
+	DisableIPV6               bool
 }
 
 // SSL defines SSL configuration for a server.
@@ -89,6 +91,7 @@ type SSL struct {
 // IngressMTLS defines TLS configuration for a server. This is a subset of TLS specifically for clients auth.
 type IngressMTLS struct {
 	ClientCert   string
+	ClientCrl    string
 	VerifyClient string
 	VerifyDepth  int
 }
@@ -109,20 +112,23 @@ type EgressMTLS struct {
 
 // OIDC holds OIDC configuration data.
 type OIDC struct {
-	AuthEndpoint   string
-	ClientID       string
-	ClientSecret   string
-	JwksURI        string
-	Scope          string
-	TokenEndpoint  string
-	RedirectURI    string
-	ZoneSyncLeeway int
+	AuthEndpoint      string
+	ClientID          string
+	ClientSecret      string
+	JwksURI           string
+	Scope             string
+	TokenEndpoint     string
+	RedirectURI       string
+	ZoneSyncLeeway    int
+	AuthExtraArgs     string
+	AccessTokenEnable bool
 }
 
 // WAF defines WAF configuration.
 type WAF struct {
 	Enable              string
 	ApPolicy            string
+	ApBundle            string
 	ApSecurityLogEnable bool
 	ApLogConf           []string
 }
@@ -175,6 +181,7 @@ type Location struct {
 	LimitReqOptions          LimitReqOptions
 	LimitReqs                []LimitReq
 	JWTAuth                  *JWTAuth
+	BasicAuth                *BasicAuth
 	EgressMTLS               *EgressMTLS
 	OIDC                     bool
 	WAF                      *WAF
@@ -254,6 +261,7 @@ type HealthCheck struct {
 	GRPCService         string
 	Mandatory           bool
 	Persistent          bool
+	KeepaliveTime       string
 }
 
 // TLSRedirect defines a redirect in a Server.
@@ -347,7 +355,23 @@ func (rl LimitReqOptions) String() string {
 
 // JWTAuth holds JWT authentication configuration.
 type JWTAuth struct {
+	Secret   string
+	Realm    string
+	Token    string
+	KeyCache string
+	JwksURI  JwksURI
+}
+
+// JwksURI defines the components of a JwksURI
+type JwksURI struct {
+	JwksScheme string
+	JwksHost   string
+	JwksPort   string
+	JwksPath   string
+}
+
+// BasicAuth refers to basic HTTP authentication mechanism options
+type BasicAuth struct {
 	Secret string
 	Realm  string
-	Token  string
 }

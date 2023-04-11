@@ -72,6 +72,14 @@ Enables OIDC policies.
 Default `false`.
 &nbsp;
 <a name="cmdoption-enable-leader-election"></a>
+
+### -inlcude-year
+Adds year to log headers.
+
+Default `false`.
+
+**NOTE**: This flag will be removed in release 2.7 and the year will be included by default.
+
 ### -enable-leader-election
 
 Enables Leader election to avoid multiple replicas of the controller reporting the status of Ingress, VirtualServer and VirtualServerRoute resources -- only one replica will report status.
@@ -95,6 +103,13 @@ Enable x509 automated certificate management for VirtualServer resources using c
 
 Requires [-enable-custom-resources](#cmdoption-enable-custom-resources).
 &nbsp;
+<a name="cmdoption-enable-external-dns"></a>
+
+### -enable-external-dns
+
+Enable integration with ExternalDNS for configuring public DNS entries for VirtualServer resources using [ExternalDNS](https://github.com/kubernetes-sigs/external-dns).
+
+Requires [-enable-custom-resources](#cmdoption-enable-custom-resources).
 <a name="cmdoption-external-service"></a>
 
 ### -external-service `<string>`
@@ -203,7 +218,7 @@ Enable support for NGINX Plus.
 
 Timeout in milliseconds which the Ingress Controller will wait for a successful NGINX reload after a change or at the initial start.
 
-Default is 4000. Default is 20000 instead if `enable-app-protect` is true.
+Default is 60000.
 &nbsp;
 <a name="cmdoption-nginx-status"></a>
 
@@ -287,7 +302,19 @@ A comma-separated list of pattern=N settings for file-filtered logging.
 
 ### -watch-namespace `<string>`
 
-Namespace to watch for Ingress resources. By default the Ingress Controller watches all namespaces.
+Comma separated list of namespaces the Ingress Controller should watch for resources. By default the Ingress Controller watches all namespaces. Mutually exclusive with "watch-namespace-label".
+&nbsp;
+<a name="cmdoption-watch-namespace-label"></a>
+
+### -watch-namespace-label `<string>`
+
+Configures the Ingress Controller to watch only those namespaces with label foo=bar. By default the Ingress Controller watches all namespaces. Mutually exclusive with "watch-namespace".
+&nbsp;
+<a name="cmdoption-watch-secret-namespace"></a>
+
+### -watch-secret-namespace `<string>`
+
+Comma separated list of namespaces the Ingress Controller should watch for secrets. If this arg is not configured, the Ingress Controller watches the same namespaces for all resources. See "watch-namespace" and "watch-namespace-label".
 &nbsp;
 <a name="cmdoption-enable-prometheus-metrics"></a>
 
@@ -309,7 +336,30 @@ Format: `[1024 - 65535]` (default `9113`)
 
 A Secret with a TLS certificate and key for TLS termination of the Prometheus metrics endpoint.
 
-* If the argument is not set, the prometheus endpoint will not use a TLS connection.
+* If the argument is not set, the Prometheus endpoint will not use a TLS connection.
+* If the argument is set, but the Ingress Controller is not able to fetch the Secret from Kubernetes API, the Ingress Controller will fail to start.
+&nbsp;
+<a name="cmdoption-enable-service-insight"></a>
+
+### -enable-service-insight
+
+Exposes the Service Insight endpoint for Ingress Controller.
+&nbsp;
+<a name="cmdoption-service-insight-listen-port"></a>
+
+### -service-insight-listen-port `<int>`
+
+Sets the port where the Service Insight is exposed.
+
+Format: `[1024 - 65535]` (default `9114`)
+&nbsp;
+<a name="cmdoption-service-insight-tls-secret"></a>
+
+### -service-insight-tls-secret `<string>`
+
+A Secret with a TLS certificate and key for TLS termination of the Service Insight endpoint.
+
+* If the argument is not set, the Service Insight endpoint will not use a TLS connection.
 * If the argument is set, but the Ingress Controller is not able to fetch the Secret from Kubernetes API, the Ingress Controller will fail to start.
 
 Format: `<namespace>/<name>`
@@ -320,8 +370,6 @@ Format: `<namespace>/<name>`
 
 Specifies the address of a running Spire agent. **For use with NGINX Service Mesh only**.
 
-Requires [-nginx-plus](#cmdoption-nginx-plus).
-
 * If the argument is set, but the Ingress Controller is unable to connect to the Spire Agent, the Ingress Controller will fail to start.
 
 &nbsp;
@@ -331,9 +379,9 @@ Requires [-nginx-plus](#cmdoption-nginx-plus).
 
 Enable support for internal routes with NGINX Service Mesh. **For use with NGINX Service Mesh only**.
 
-Requires [-nginx-plus](#cmdoption-nginx-plus) and [-spire-agent-address](#cmdoption-spire-agent-address).
+Requires [-spire-agent-address](#cmdoption-spire-agent-address).
 
-* If the argument is set, but `nginx-plus` is set to false, or the `spire-agent-address` is not provided, the Ingress Controller will fail to start.
+* If the argument is set, but `spire-agent-address` is not provided, the Ingress Controller will fail to start.
 
 &nbsp;
 <a name="cmdoption-enable-latency-metrics"></a>
@@ -444,3 +492,11 @@ The HTTP port for the readiness endpoint.
 
 Format: `[1024 - 65535]` (default `8081`)
 &nbsp;
+
+### -disable-ipv6
+
+Disable IPV6 listeners explicitly for nodes that do not support the IPV6 stack.
+
+Default `false`.
+&nbsp;
+<a name="cmdoption-disable-ipv6"></a>

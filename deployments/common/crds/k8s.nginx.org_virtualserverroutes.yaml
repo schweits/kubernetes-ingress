@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
   name: virtualserverroutes.k8s.nginx.org
 spec:
@@ -26,6 +26,10 @@ spec:
           type: string
         - jsonPath: .status.externalEndpoints[*].ip
           name: IP
+          type: string
+        - jsonPath: .status.externalEndpoints[*].hostname
+          name: ExternalHostname
+          priority: 1
           type: string
         - jsonPath: .status.externalEndpoints[*].ports
           name: Ports
@@ -511,6 +515,8 @@ spec:
                             type: string
                           jitter:
                             type: string
+                          keepalive-time:
+                            type: string
                           mandatory:
                             type: boolean
                           passes:
@@ -608,9 +614,11 @@ spec:
                 externalEndpoints:
                   type: array
                   items:
-                    description: ExternalEndpoint defines the IP and ports used to connect to this resource.
+                    description: ExternalEndpoint defines the IP/ Hostname and ports used to connect to this resource.
                     type: object
                     properties:
+                      hostname:
+                        type: string
                       ip:
                         type: string
                       ports:
@@ -627,9 +635,3 @@ spec:
       storage: true
       subresources:
         status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

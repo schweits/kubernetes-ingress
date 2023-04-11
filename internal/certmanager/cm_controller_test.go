@@ -135,14 +135,26 @@ func Test_controller_Register(t *testing.T) {
 			// Certificate event is received then HasSynced has not been setup
 			// properly.
 
-			cm := &CmController{
-				ctx:                       b.RootContext,
-				queue:                     workqueue.NewNamedRateLimitingQueue(controllerpkg.DefaultItemBasedRateLimiter(), ControllerName),
-				cmSharedInformerFactory:   b.FakeCMInformerFactory(),
-				kubeSharedInformerFactory: b.FakeKubeInformerFactory(),
-				recorder:                  b.Recorder,
+			ig := make(map[string]*namespacedInformer)
+
+			nsi := &namespacedInformer{
+				cmSharedInformerFactory:   b.Context.SharedInformerFactory,
+				kubeSharedInformerFactory: b.Context.KubeSharedInformerFactory,
 				vsSharedInformerFactory:   b.VsSharedInformerFactory,
 			}
+
+			ig[""] = nsi
+
+			cm := &CmController{
+				ctx:           b.RootContext,
+				queue:         workqueue.NewNamedRateLimitingQueue(controllerpkg.DefaultItemBasedRateLimiter(), ControllerName),
+				informerGroup: ig,
+				recorder:      b.Recorder,
+				kubeClient:    b.Client,
+				vsClient:      b.VSClient,
+			}
+
+			cm.addHandlers(nsi)
 
 			queue := cm.register()
 
