@@ -22,7 +22,6 @@ docs: "DOCS-1220"
 
 **API Gateway** – implement various API Gateway use cases at your cluster edge. Method blocking, rate limiting, custom responses, error codes, etc. through the K8s API.
 
----
 | **Capability** | **Resource** | **Enterprise exclusive** | **Documentation** | **Example** | **Lab Exercise** |
 | --- | --- | --- | --- | --- | --- |
 | **Custom Resources –** provide additional capabilities and granular controls of the configuration to scope aspects of the configuration to different teams, not achievable with Ingress resources. | ***CRD*** || <ul><li>[https://docs.nginx.com/nginx-ingress-controller/configuration/virtualserver-and-virtualserverroute-resources/](https://docs.nginx.com/nginx-ingress-controller/configuration/virtualserver-and-virtualserverroute-resources/)</li><li>[https://docs.nginx.com/nginx-ingress-controller/configuration/policy-resource/](https://docs.nginx.com/nginx-ingress-controller/configuration/policy-resource/)</li><li>[https://docs.nginx.com/nginx-ingress-controller/configuration/transportserver-resource/](https://docs.nginx.com/nginx-ingress-controller/configuration/transportserver-resource/)</li> | [https://github.com/nginxinc/kubernetes-ingress/tree/main/examples/custom-resources](https://github.com/nginxinc/kubernetes-ingress/tree/main/examples/custom-resources) | <ul><li>[https://github.com/nginxinc/nginx-ingress-workshops/blob/main/OSS/labs/lab9/readme.md](https://github.com/nginxinc/nginx-ingress-workshops/blob/main/OSS/labs/lab9/readme.md)</li><li>[https://github.com/nginxinc/nginx-ingress-workshops/blob/main/Plus/labs/lab9/readme.md](https://github.com/nginxinc/nginx-ingress-workshops/blob/main/Plus/labs/lab9/readme.md)</li>|
@@ -90,4 +89,3 @@ docs: "DOCS-1220"
 | **readOnlyRootFilesystem support** ||||||
 | **FIPS Inside** ||||||
 | **Cache Support** – optimize your K8s applications using dynamic caching capabilities of NGINX ||||| <ul><li>[https://github.com/nginxinc/nginx-ingress-workshops/blob/main/OSS/labs/lab10/readme.md](https://github.com/nginxinc/nginx-ingress-workshops/blob/main/OSS/labs/lab10/readme.md)</li><li>[https://github.com/nginxinc/nginx-ingress-workshops/blob/main/Plus/labs/lab10/readme.md](https://github.com/nginxinc/nginx-ingress-workshops/blob/main/Plus/labs/lab10/readme.md)</li> |
----
