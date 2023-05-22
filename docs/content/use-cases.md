@@ -5,7 +5,7 @@ description: |
 weight: 1700
 doctypes: ["concept"]
 toc: true
-docs: ""
+docs: "DOCS-1220"
 ---
 
 ## NGINX Ingress Controller Use Case Directory
@@ -22,6 +22,7 @@ docs: ""
 
 **API Gateway** – implement various API Gateway use cases at your cluster edge. Method blocking, rate limiting, custom responses, error codes, etc. through the K8s API.
 
+---
 | **Capability** | **Resource** | **Enterprise exclusive** | **Documentation** | **Example** | **Lab Exercise** |
 | --- | --- | --- | --- | --- | --- |
 | **Custom Resources –** provide additional capabilities and granular controls of the configuration to scope aspects of the configuration to different teams, not achievable with Ingress resources. |
@@ -372,3 +373,4 @@ https://github.com/nginxinc/kubernetes-ingress/tree/main/examples/ingress-resour
  | [https://github.com/nginxinc/nginx-ingress-workshops/blob/main/OSS/labs/lab10/readme.md](https://github.com/nginxinc/nginx-ingress-workshops/blob/main/OSS/labs/lab10/readme.md)
 [https://github.com/nginxinc/nginx-ingress-workshops/blob/main/Plus/labs/lab10/readme.md](https://github.com/nginxinc/nginx-ingress-workshops/blob/main/Plus/labs/lab10/readme.md)
  |
+---
