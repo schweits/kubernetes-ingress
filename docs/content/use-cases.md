@@ -87,5 +87,5 @@ docs: "DOCS-1220"
 | **Rich and deep metrics and backend insights –** from detailed request and response times to response code awareness, over 100 detailed metrics || **\*** | [https://docs.nginx.com/nginx-ingress-controller/logging-and-monitoring/status-page/](https://docs.nginx.com/nginx-ingress-controller/logging-and-monitoring/status-page/) |||
 | **NTLM authentication to backends** - forwarding of NTLM tokens to backends | **CRD** |||||
 | **readOnlyRootFilesystem support** ||||||
-| **FIPS Inside** ||||||
+| **FIPS Inside** - paid subscribers benefit from FIPS Inside support built directly into the ingress controller image with FIPS attestation.  This is avaialble for download through the private registry. ||||
 | **Cache Support** – optimize your K8s applications using dynamic caching capabilities of NGINX ||||| <ul><li>[https://github.com/nginxinc/nginx-ingress-workshops/blob/main/OSS/labs/lab10/readme.md](https://github.com/nginxinc/nginx-ingress-workshops/blob/main/OSS/labs/lab10/readme.md)</li><li>[https://github.com/nginxinc/nginx-ingress-workshops/blob/main/Plus/labs/lab10/readme.md](https://github.com/nginxinc/nginx-ingress-workshops/blob/main/Plus/labs/lab10/readme.md)</li> |
