@@ -1,17 +1,15 @@
 ---
-title: Using GCP Marketplace Ingress Controller
-description: "This document will walk you through the steps needed to deploy the NGINX Ingress Controller through the GCP Marketplace."
+title: Using the GCP Marketplace NGINX Ingress Controller
+description: "This document will walk you through the steps needed to deploy F5 NGINX Ingress Controller through the GCP Marketplace."
 weight: 2400
 doctypes: [""]
 toc: true
 docs: "DOCS-000"
 ---
 
-This document will walk you through the steps needed to deploy and configure the NGINX Ingress Controller through the GCP Marketplace.
-
 ## Product overview
 
-The F5 NGINX Ingress Controller is an implementation of a Kubernetes Ingress Controller for NGINX and NGINX Plus.
+NGINX Ingress Controller is an implementation of a Kubernetes Ingress Controller for NGINX and NGINX Plus.
 
 Basic features include:
 
@@ -21,8 +19,8 @@ Basic features include:
 
 ## One-time setup
 
-To quickly get the NGINX Ingress Controller up and running, follow our [Installation with Manifests](https://docs.nginx.com/nginx-ingress-controller/installation/installation-with-manifests/) guide.
-This details how to locally build an image of the NGINX Ingress Controller as well as the necessary CustomResourceDefinitions (CRDs) required.
+To quickly get NGINX Ingress Controller up and running, follow our [Installation with Manifests](https://docs.nginx.com/nginx-ingress-controller/installation/installation-with-manifests/) guide.
+This details how to locally build an image of NGINX Ingress Controller as well as the necessary CustomResourceDefinitions (CRDs) required.
 
 ## Installation
 
@@ -57,7 +55,7 @@ This details how to locally build an image of the NGINX Ingress Controller as we
 
    {{< img title="Install to existing GKE cluster" src="./img/gke-ingress-controller-application.png" >}}
 
-   You can find the NGINX Ingress Controller *application* by navigating back to **Kubernetes Engine > Applications**
+   You can find NGINX Ingress Controller *application* by navigating back to **Kubernetes Engine > Applications**
 
 ### Install NGINX Ingress Controller to a new GKE cluster
 
@@ -84,7 +82,7 @@ As an alternative to using an existing GKE cluster, GCP Marketplace can create a
 
    After a short delay the cluster will be ready for step 3.
 
-3. Complete the NGINX Ingress Controller deployment options
+3. Complete NGINX Ingress Controller deployment options
 
    {{< img title="Complete new GKE cluster installation" src="./img/gke-install-to-new-cluster.png" >}}
 
@@ -98,11 +96,11 @@ As an alternative to using an existing GKE cluster, GCP Marketplace can create a
 
    {{< img title="Install to existing GKE cluster" src="./img/gke-ingress-controller-application.png" >}}
 
-   You can find the NGINX Ingress Controller *application* by navigating back to **Kubernetes Engine > Applications**
+   You can find NGINX Ingress Controller *application* by navigating back to **Kubernetes Engine > Applications**
 
 ## Configuration
 
-The GCP Marketplace will deploy the NGINX Ingress Controller with a default configuration and an empty *ConfigMap*. These resources will all be named `<app-instance-name>-nginx-ingress`, where `<app-instance-name>` matches the value you provided during the [installation](#installation) step.
+The GCP Marketplace will deploy NGINX Ingress Controller with a default configuration and an empty *ConfigMap*. These resources will all be named `<app-instance-name>-nginx-ingress`, where `<app-instance-name>` matches the value you provided during the [installation](#installation) step.
 
 For example, if NGINX Ingress Controller was deployed to namespace `nginx-ingress` and with an **App instance name** of `nginx-ingress-plus` (as used in the examples above), the ConfigMap can be viewed with `kubectl`:
 
@@ -136,4 +134,4 @@ See the [Configuration](https://docs.nginx.com/nginx-ingress-controller/configur
 
 ## Basic Usage
 
-To setup a basic application that uses the NGINX Ingress Controller, see our [basic configuration](https://github.com/nginxinc/kubernetes-ingress/tree/main/examples/custom-resources/basic-configuration) example page.
+To setup a basic application that uses NGINX Ingress Controller, see our [basic configuration](https://github.com/nginxinc/kubernetes-ingress/tree/main/examples/custom-resources/basic-configuration) example page.

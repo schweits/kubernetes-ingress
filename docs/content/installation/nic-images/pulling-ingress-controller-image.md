@@ -1,5 +1,5 @@
 ---
-title: Pulling the NGINX Ingress Controller Image
+title: Getting the F5 Registry NGINX Ingress Controller Image
 description: "This document explains how to pull a F5 NGINX Plus Ingress Controller image from the F5 Docker registry."
 weight: 1700
 doctypes: [""]
