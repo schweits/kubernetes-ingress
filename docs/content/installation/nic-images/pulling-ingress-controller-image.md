@@ -22,7 +22,7 @@ Before you start, you'll need these installed on your machine:
 
 ## Pull an image using Docker and push it to a private registry
 
-1. Start by setting up Docker to communicate with the F5 Container registry, `private-registry.nginx.com`. In a Linux environment, create a directory under `/etc/docker/certs.d`` named `private-registry.nginx``.com. Add a certificate (*client.cert*) and a key (*client.key*) to it. Here's how:
+1. Start by setting up Docker to communicate with the F5 Container registry, `private-registry.nginx.com`. In a Linux environment, create a directory under `/etc/docker/certs.d` named `private-registry.nginx`.com. Add a certificate (*client.cert*) and a key (*client.key*) to it. Here's how:
 
     ```shell
     mkdir -p /etc/docker/certs.d/private-registry.nginx.com
