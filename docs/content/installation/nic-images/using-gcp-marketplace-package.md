@@ -47,7 +47,7 @@ Choose one of the following methods to install NGINX Ingress Controller.
 
 ### Install to a new GKE cluster
 
-If you prefer to use a new GKE cluster, follow these steps. Ensure you have enough vCPU for both the NGINX Ingress Controller and any other applications you'll deploy.
+If you prefer to use a new GKE cluster, follow these steps. Ensure you have enough vCPU for both NGINX Ingress Controller and any other applications you'll deploy.
 
 1. Open [Google Cloud Console](https://console.cloud.google.com/) and go to **Marketplace*.
 2. Search for *NGINX Ingress Controller*.
@@ -72,9 +72,9 @@ If you prefer to use a new GKE cluster, follow these steps. Ensure you have enou
 
 ## Configuration
 
-When you install the NGINX Ingress Controller from the GCP Marketplace, it comes with default settings and an empty *ConfigMap*. The resources have names ending in a suffix that reflects the app instance name you chose during installation. This suffix has the format <app-instance-name>-nginx-ingress.
+When you install NGINX Ingress Controller from the GCP Marketplace, it comes with default settings and an empty *ConfigMap*. The resources have names ending in a suffix that reflects the app instance name you chose during installation. This suffix has the format <app-instance-name>-nginx-ingress.
 
-For example, if you've installed the NGINX Ingress Controller in the `nginx-ingress` namespace and used the app instance name `nginx-ingress-plus`, you can check its _ConfigMap_ by running this `kubectl` command:
+For example, if you've installed NGINX Ingress Controller in the `nginx-ingress` namespace and used the app instance name `nginx-ingress-plus`, you can check its _ConfigMap_ by running this `kubectl` command:
 
 ```bash
 kubectl get configmap -n nginx-ingress nginx-ingress-plus-nginx-ingress -o yaml
@@ -112,4 +112,4 @@ For options to customize your resources, see our [Configuration documentation]({
 
 ## Basic Usage
 
-To learn how to set up a basic application with the NGINX Ingress Controller, refer to our [Basic Configuration Example](https://github.com/nginxinc/kubernetes-ingress/tree/main/examples/custom-resources/basic-configuration).
+To learn how to set up a basic application with NGINX Ingress Controller, refer to our [Basic Configuration Example](https://github.com/nginxinc/kubernetes-ingress/tree/main/examples/custom-resources/basic-configuration).
