@@ -921,7 +921,7 @@ HELM CHART:
 UPGRADE:
 
 - For NGINX, use the 1.12.1 image from our DockerHub: `nginx/nginx-ingress:1.12.1`, `nginx/nginx-ingress:1.12.1-alpine` or `nginx/nginx-ingress:1.12.1-ubi`
-- For NGINX Plus, use the 1.12.1 image from the F5 Container Registry - see [the documentation here](https://docs.nginx.com/nginx-ingress-controller/installation/pulling-ingress-controller-image/)
+- For NGINX Plus, use the 1.12.1 image from the F5 Container Registry - see [the documentation here]({{< relref "installation/nic-images/pulling-ingress-controller-image" >}})
 - Alternatively, you can also build your own image using the 1.12.1 source code.
 - For Helm, use version 0.10.1 of the chart.
 

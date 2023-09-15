@@ -16,7 +16,7 @@ This chart deploys the NGINX Ingress Controller in your Kubernetes cluster.
     specify the secret using `controller.serviceAccount.imagePullSecretName` parameter.
   - Alternatively, pull an Ingress Controller image with NGINX Plus and push it to your private registry by following
     the instructions from
-    [here](https://docs.nginx.com/nginx-ingress-controller/installation/pulling-ingress-controller-image).
+    [here](https://docs.nginx.com/nginx-ingress-controller/installation/nic-images/pulling-ingress-controller-image).
   - Alternatively, you can build an Ingress Controller image with NGINX Plus and push it to your private registry by
     following the instructions from
     [here](https://docs.nginx.com/nginx-ingress-controller/installation/building-ingress-controller-image).
