@@ -133,26 +133,26 @@ If you run into issues while following this guide, here are some solutions for t
 
 **Problem: Certificate errors**
 
-- **Possible Reason**: You might have placed the certificate and key in the wrong directory, or you could be using an NGINX Plus certificate instead of the required NGINX Ingress Controller subscription certificate.
+- **Possible reason**: You might have placed the certificate and key in the wrong directory, or you could be using an NGINX Plus certificate instead of the required NGINX Ingress Controller subscription certificate.
 - **Solution**: Double-check that you've downloaded the correct NGINX Ingress Controller certificate and key from [MyF5](https://my.f5.com). An NGINX Plus certificate and key won't work here. Make sure you've copied the certificate and key to the correct directory and that you've renamed the certificate with a *.cert* extension.
 
 ---
 
-**Problem: Docker Version Compatibility**
+**Problem: Docker version compatibility**
 
-- **Possible Reason:** You are using an outdated version of Docker that's incompatible with the NGINX Ingress Controller image.
+- **Possible reason:** You are using an outdated version of Docker that's incompatible with the NGINX Ingress Controller image.
 - **Solution:** Check that you're running [Docker v18.09 or higher](https://docs.docker.com/engine/release-notes/18.09/). Upgrade if necessary.
 
 ---
 
-**Problem: Can't Pull the Image**
+**Problem: Can't pull the image**
 
-- **Possible Reason:** The image name or tag doesn't match what's available in the F5 registry.
+- **Possible reason:** The image name or tag doesn't match what's available in the F5 registry.
 - **Solution:** Make sure the image name and tag are correct. Refer to the [Tech Specs guide]({{< relref "technical-specifications.md#images-with-nginx-plus" >}}) for the proper tags.
 
 ---
 
-**Problem: Failed to Push to Private Registry**
+**Problem: Failed to push to private registry**
 
-- **Possible Reason:** You're either not logged into your private registry, or you've incorrectly tagged the image.
+- **Possible reason:** You're either not logged into your private registry, or you've incorrectly tagged the image.
 - **Solution:** Verify that you're logged into your private registry and that you've tagged the image correctly before pushing. For more details, refer to the [Docker documentation](https://docs.docker.com/docker-hub/repos/).
