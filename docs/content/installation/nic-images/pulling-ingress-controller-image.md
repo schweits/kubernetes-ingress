@@ -7,18 +7,24 @@ toc: true
 docs: "DOCS-605"
 ---
 
+
+
 To complete the steps in this guide, you'll need your NGINX Ingress Controller subscription certificate and key. Keep in mind that an NGINX Plus certificate and key won't work for this. If you're looking for alternative methods, here are some:
 
 - [Install using a JWT token in a Docker Config Secret]({{< relref "using-the-jwt-token-docker-secret" >}}).
 - [Build the Ingress Controller image]({{< relref "building-ingress-controller-image" >}}) using the source code from the GitHub repository and your NGINX Plus subscription certificate and key.
 - For NGINX Ingress Controller based on NGINX OSS, you can pull the [nginx/nginx-ingress image](https://hub.docker.com/r/nginx/nginx-ingress/) from DockerHub.
 
-## Prerequisites
+---
+
+## Before you begin
 
 Before you start, you'll need these installed on your machine:
 
-- [Docker](https://www.docker.com/products/docker) v18.09 or higher.
+- [Docker v18.09 or higher](https://docs.docker.com/engine/release-notes/18.09/).
 - An NGINX Ingress Controller subscription. Download both the certificate (*nginx-repo.crt*) and key (*nginx-repo.key*) from [MyF5](https://my.f5.com).
+
+---
 
 ## Pull an image using Docker and push it to a private registry
 
@@ -34,7 +40,6 @@ Before you start, you'll need these installed on your machine:
 
     {{<tip>}}The example above is for Linux. For Mac or Windows, consult the [Docker for Mac](https://docs.docker.com/docker-for-mac/#add-client-certificates) or [Docker for Windows](https://docs.docker.com/docker-for-windows/#how-do-i-add-client-certificates) documentation. For more details on Docker Engine security, you can refer to the [Docker Engine Security documentation](https://docs.docker.com/engine/security/).
     {{</tip>}}
-
 
 2. Now, pull the image you need from `private-registry.nginx.com`. You can find the right image for your needs in the [Tech Specs guide]({{< relref "technical-specifications#images-with-nginx-plus" >}}). For example:
 
@@ -118,36 +123,36 @@ Before you start, you'll need these installed on your machine:
 
 <br>
 
+---
+
 ## Troubleshooting
 
 If you run into issues while following this guide, here are some solutions for the most common problems.
 
-### Can't pull the image from F5 Container Registry
+<br>
 
-- **Possible Reason**: Incorrect certificate or key.
-- **Solution**: Double-check that you've downloaded the correct NGINX Ingress Controller certificate and key from [MyF5](https://my.f5.com). An NGINX Plus certificate and key won't work here.
+**Problem: Certificate errors**
 
-### Docker throws "unauthorized" error while pulling image
+- **Possible Reason**: You might have placed the certificate and key in the wrong directory, or you could be using an NGINX Plus certificate instead of the required NGINX Ingress Controller subscription certificate.
+- **Solution**: Double-check that you've downloaded the correct NGINX Ingress Controller certificate and key from [MyF5](https://my.f5.com). An NGINX Plus certificate and key won't work here. Make sure you've copied the certificate and key to the correct directory and that you've renamed the certificate with a *.cert* extension.
 
-- **Possible Reason**: Authentication failure.
-- **Solution**: Make sure you've placed the certificate and key in the correct directory and named them correctly. Also, confirm you're targeting `private-registry.nginx.com`.
+---
 
-### Can't tag or upload the image to your private registry
+**Problem: Docker Version Compatibility**
 
-- **Possible Reason**: Not logged in or incorrect path.
-- **Solution**: Run `docker login <my-docker-registry>` to make sure you're logged in. Check your registry's path and confirm that you've replaced `<my-docker-registry>` in the example commands with the correct path.
+- **Possible Reason:** You are using an outdated version of Docker that's incompatible with the NGINX Ingress Controller image.
+- **Solution:** Check that you're running [Docker v18.09 or higher](https://docs.docker.com/engine/release-notes/18.09/). Upgrade if necessary.
 
-### Docker throws "TLS handshake timeout" or "certificate signed by unknown authority"
+---
 
-- **Possible Reason**: Certificate issue.
-- **Solution**: Verify the certificate and key are correctly placed in the Docker certificate directory. Also, make sure you renamed the certificate to have a _.cert_ extension. Refer to the [Docker Engine Security documentation](https://docs.docker.com/engine/security/) for additional guidance.
+**Problem: Can't Pull the Image**
 
-### `curl` command returns errors while listing available image tags
+- **Possible Reason:** The image name or tag doesn't match what's available in the F5 registry.
+- **Solution:** Make sure the image name and tag are correct. Refer to the [Tech Specs guide]({{< relref "technical-specifications.md#images-with-nginx-plus" >}}) for the proper tags.
 
-- **Possible Reason**: Wrong key or certificate path in the `curl` command.
-- **Solution**: Double-check the paths you're using in the `curl` command. Make sure you're using the correct key and certificate to authenticate against the Docker registry API.
+---
 
-### Image not found in your private registry after upload
+**Problem: Failed to Push to Private Registry**
 
-- **Possible Reason**: Failed upload or wrong tag.
-- **Solution**: Make sure you've tagged the image correctly before pushing it to your private registry. Double-check the output of the `docker push` command to see if the upload succeeded.
+- **Possible Reason:** You're either not logged into your private registry, or you've incorrectly tagged the image.
+- **Solution:** Verify that you're logged into your private registry and that you've tagged the image correctly before pushing. For more details, refer to the [Docker documentation](https://docs.docker.com/docker-hub/repos/).
