@@ -16,7 +16,7 @@ This document provides an overview of the steps required to use NGINX App Protec
 1. Make sure you have access to the Ingress Controller image:
     - For NGINX Plus Ingress Controller, see [here]({{< relref "installation/nic-images/pulling-ingress-controller-image" >}}) for details on how to pull the image from the F5 Docker registry.
     - To pull from the F5 Container registry in your Kubernetes cluster, configure a docker registry secret using your JWT token from the MyF5 portal by following the instructions from [here](/nginx-ingress-controller/installation/using-the-jwt-token-docker-secret).
-    - It is also possible to build your own image and push it to your private Docker registry by following the instructions from [here](/nginx-ingress-controller/installation/building-ingress-controller-image).
+    - It is also possible to build your own image and push it to your private Docker registry by following the instructions from [here]({{< relref "installation/building-nginx-ingress-controller.md" >}})).
 2. Clone the Ingress Controller repo:
 
     ```
@@ -56,7 +56,7 @@ Alternatively, you can install the App Protect DoS Arbitrator using the YAML man
 
 Take the steps below to create the Docker image that you'll use to deploy NGINX Ingress Controller with App Protect DoS in Kubernetes.
 
-- [Build the NGINX Ingress Controller image](/nginx-ingress-controller/installation/building-ingress-controller-image).
+- [Build the NGINX Ingress Controller image]({{< relref "installation/building-nginx-ingress-controller.md" >}})).
 
   When running the `make` command to build the image, be sure to use the `debian-image-dos-plus` target. For example:
 
@@ -68,7 +68,7 @@ Take the steps below to create the Docker image that you'll use to deploy NGINX 
 
     If you want to include the App Protect WAF module in the image, you can use the `debian-image-nap-dos-plus` target or the `ubi-image-nap-dos-plus` target for OpenShift.
 
-- [Push the image to your local Docker registry](/nginx-ingress-controller/installation/building-ingress-controller-image/#building-the-image-and-pushing-it-to-the-private-registry).
+- [Push the image to your local Docker registry]({{< relref "installation/building-nginx-ingress-controller.md" >}})/#building-the-image-and-pushing-it-to-the-private-registry).
 
 ## Install the Ingress Controller
 

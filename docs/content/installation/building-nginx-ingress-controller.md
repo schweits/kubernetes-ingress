@@ -1,5 +1,5 @@
 ---
-title: Building NGINX Ingress Controller Image
+title: Building NGINX Ingress Controller
 description: "This document explains how to build an NGINX Ingress Controller image using the source code."
 weight: 2200
 doctypes: [""]

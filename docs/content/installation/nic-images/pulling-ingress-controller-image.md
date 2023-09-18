@@ -12,7 +12,7 @@ docs: "DOCS-605"
 To complete the steps in this guide, you'll need your NGINX Ingress Controller subscription certificate and key. Keep in mind that an NGINX Plus certificate and key won't work for this. If you're looking for alternative methods, here are some:
 
 - [Install using a JWT token in a Docker Config Secret]({{< relref "using-the-jwt-token-docker-secret" >}}).
-- [Build the Ingress Controller image]({{< relref "building-ingress-controller-image" >}}) using the source code from the GitHub repository and your NGINX Plus subscription certificate and key.
+- [Build the Ingress Controller image]({{< relref "building-nginx-ingress-controller" >}}) using the source code from the GitHub repository and your NGINX Plus subscription certificate and key.
 - For NGINX Ingress Controller based on NGINX OSS, you can pull the [nginx/nginx-ingress image](https://hub.docker.com/r/nginx/nginx-ingress/) from DockerHub.
 
 ---
