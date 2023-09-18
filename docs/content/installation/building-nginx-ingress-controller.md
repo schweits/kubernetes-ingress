@@ -1,26 +1,26 @@
 ---
 title: Building NGINX Ingress Controller
-description: "This document explains how to build an NGINX Ingress Controller image using the source code."
-weight: 2200
-doctypes: [""]
+description: "Learn how to build an NGINX Ingress Controller image from source code."
+weight: 2500
+doctypes: ["installation"]
 toc: true
 ---
 
-This document explains how to build an NGINX Ingress Controller image using the source code. You can also use pre-built images: please see [here](/nginx-ingress-controller/installation/using-the-jwt-token-docker-secret) and [here]({{< relref "installation/nic-images/pulling-ingress-controller-image" >}}) for details on how to pull the NGINX Ingress Controller based on NGINX Plus from the F5 Docker registry; for NGINX Ingress Controller based on NGINX OSS, we provide the images through [DockerHub](https://hub.docker.com/r/nginx/nginx-ingress/) and [GitHub Container](https://github.com/nginxinc/kubernetes-ingress/pkgs/container/kubernetes-ingress).
+This document explains how to build an NGINX Ingress Controller image using the source code. You can also use pre-built images: please see [here]({{< relref "installation/using-the-jwt-token-docker-secret.md" >}}) and [here]({{< relref "installation/nic-images/pulling-ingress-controller-image" >}}) for details on how to pull the NGINX Ingress Controller based on NGINX Plus from the F5 Docker registry; for NGINX Ingress Controller based on NGINX OSS, we provide the images through [DockerHub](https://hub.docker.com/r/nginx/nginx-ingress/) and [GitHub Container](https://github.com/nginxinc/kubernetes-ingress/pkgs/container/kubernetes-ingress).
 
 ## Prerequisites
 
-Before you can build the image, make sure that the following software is installed on your machine:
+To get started, you'll need the following software installed on your machine:
 
-- [Docker](https://www.docker.com/products/docker) v19.03+
+- [Docker v19.03 or higher](https://docs.docker.com/engine/release-notes/19.03/)
 - [GNU Make](https://www.gnu.org/software/make/)
 - [git](https://git-scm.com/)
 - [OpenSSL](https://www.openssl.org/), optionally, if you would like to generate a self-signed certificate and a key for the default server.
 - For NGINX Plus, you must have the NGINX Plus license -- the certificate (`nginx-repo.crt`) and the key (`nginx-repo.key`).
 
-Although the NGINX Ingress Controller is written in golang, golang is not required: you can download the binary file or build the NGINX Ingress Controller in a Docker container.
+Even though the NGINX Ingress Controller is written in Golang, you don't need it installed. You can either download the binary file or build the NGINX Ingress Controller in a Docker container.
 
-## Building the Image and Pushing It to the Private Registry
+## Build the image and push it to a private registry
 
 We build the image using the make utility and the provided `Makefile`. Let’s create the NGINX Ingress Controller binary, build an image and push the image to the private registry.
 
@@ -83,9 +83,9 @@ We build the image using the make utility and the provided `Makefile`. Let’s c
 
 Next you will find the details about available Makefile targets and variables.
 
-### Makefile Targets
+### Makefile targets
 
-You can see a list of all the targets by running `make` without any target or `make help`
+You can see a list of all the targets by running `make` without any target or `make help`.
 
 Below you can find some of the most useful targets in the **Makefile**:
 
@@ -117,7 +117,7 @@ A few other useful targets:
 - **test**: runs unit tests.
 - **certificate-and-key**: The Ingress Controller requires a certificate and a key for the default HTTP/HTTPS server. You can reference them in a TLS Secret in a command-line argument to the Ingress Controller. As an alternative, you can add a file in the PEM format with your certificate and key to the image as `/etc/nginx/secrets/default`. Optionally, you can generate a self-signed certificate and a key using this target. Note that you must add the `ADD` instruction in the Dockerfile to copy the cert and the key to the image.
 
-### Makefile Variables
+### Makefile variables
 
 The **Makefile** contains the following main variables for you to customize (either by changing the Makefile or by overriding the variables in the make command):
 
