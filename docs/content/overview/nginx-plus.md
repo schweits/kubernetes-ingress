@@ -1,7 +1,7 @@
 ---
-title: NGINX Ingress Controller with NGINX Plus
+title: Extensibility with NGINX Plus
 description: "This document explains the key characteristics that NGINX Plus brings on top of NGINX into the NGINX Ingress Controller."
-weight: 400
+weight: 300
 doctypes: ["concept"]
 toc: true
 docs: "DOCS-611"
