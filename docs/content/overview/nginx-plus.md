@@ -9,7 +9,6 @@ aliases:
   - /nginx-plus/
 ---
 
-
 NGINX Ingress Controller works with both [NGINX](https://nginx.org/) and [NGINX Plus](https://www.nginx.com/products/nginx/) -- a commercial closed source version of NGINX that comes with additional features and support.
 
 Below are the key characteristics that NGINX Plus brings on top of NGINX into the NGINX Ingress Controller.

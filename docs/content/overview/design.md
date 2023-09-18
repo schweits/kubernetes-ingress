@@ -7,7 +7,6 @@ toc: true
 docs: "DOCS-609"
 ---
 
-
 This document explains how NGINX Ingress Controller works. The target audience includes the following two main groups:
 
 - *Operators* who would like to know how the software works and also better understand how it can fail.
