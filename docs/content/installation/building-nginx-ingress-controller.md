@@ -96,7 +96,7 @@ We'll guide you through building NGINX Ingress Controller v3.2.1. To build a dif
 
 For details on the available _Makefile_ targets and variables, proceed to the next section.
 
-## Makefile details
+## Makefile details {#makefile-details}
 
 ### Makefile targets
 
