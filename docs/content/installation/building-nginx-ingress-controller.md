@@ -1,6 +1,6 @@
 ---
 title: Building NGINX Ingress Controller
-description: "Learn how to build an NGINX Controller image from source code. In this document, you'll find step-by-step instructions for building the image for NGINX or NGINX Plus and uploading it to a private registry. You'll also find information on the Makefile targets and variables."
+description: "Learn how to build an NGINX Ingress Controller image from source code. In this document, you'll find step-by-step instructions for building the image for NGINX or NGINX Plus and uploading it to a private registry. You'll also find information on the Makefile targets and variables."
 weight: 2500
 doctypes: ["installation"]
 toc: true
