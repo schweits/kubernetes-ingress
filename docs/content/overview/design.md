@@ -14,12 +14,6 @@ This document explains how NGINX Ingress Controller works. The target audience i
 
 We assume that the reader is familiar with core Kubernetes concepts, such as Pod, Deployment, Service, and Endpoints. Additionally, we recommend reading [this blog post](https://www.nginx.com/blog/inside-nginx-how-we-designed-for-performance-scale/) for an overview of the NGINX architecture.
 
-## What is an Ingress Controller?
-
-An Ingress Controller is a component in a Kubernetes cluster that configures an HTTP load balancer according to Ingress resources created by the cluster user.
-
-> If you’d like to read more about the Ingress resource, refer to [the official Kubernetes documentation](https://kubernetes.io/docs/concepts/services-networking/ingress/).
-
 This document is specific to NGINX Ingress Controller, referred to as *Ingress Controller* or *IC*, which is built upon NGINX and NGINX Plus capabilities
 
 ## The Ingress Controller at a High Level

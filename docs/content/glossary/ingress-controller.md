@@ -3,8 +3,6 @@ title: Ingress Controller
 doctypes: ["concept"]
 ---
 
-## What is the Ingress Controller?
+*Ingress Controllers* are applications within a Kubernetes cluster that enable [Ingress]({{< relref "glossary/ingress">}}) resources to function. They are not automatically deployed with a Kubernetes cluster, and can vary in implementation based on intended use, such as load balancing algorithms for Ingress resources.
 
-The Ingress Controller is an application that runs in a cluster and configures an HTTP load balancer according to Ingress resources. The load balancer can be a software load balancer running in the cluster or a hardware or cloud load balancer running externally. Different load balancers require different Ingress Controller implementations.
-
-In the case of NGINX, the Ingress Controller is deployed in a pod along with the load balancer.
+[How NGINX Ingress Controller is Designed]({{< relref "overview/design">}}) explains the technical details of the F5 NGINX Ingress Controller.
