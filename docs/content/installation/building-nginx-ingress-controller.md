@@ -1,12 +1,18 @@
 ---
 title: Building NGINX Ingress Controller
-description: "Learn how to build an NGINX Ingress Controller image from source code."
+description: "Learn how to build an NGINX Controller image from source code. In this document, you'll find step-by-step instructions for building the image for NGINX or NGINX Plus and uploading it to a private registry. You'll also find information on the Makefile targets and variables."
 weight: 2500
 doctypes: ["installation"]
 toc: true
 ---
 
-This document explains how to build an NGINX Ingress Controller image using the source code. You can also use pre-built images: please see [here]({{< relref "installation/using-the-jwt-token-docker-secret.md" >}}) and [here]({{< relref "installation/nic-images/pulling-ingress-controller-image" >}}) for details on how to pull the NGINX Ingress Controller based on NGINX Plus from the F5 Docker registry; for NGINX Ingress Controller based on NGINX OSS, we provide the images through [DockerHub](https://hub.docker.com/r/nginx/nginx-ingress/) and [GitHub Container](https://github.com/nginxinc/kubernetes-ingress/pkgs/container/kubernetes-ingress).
+<br>
+
+{{<see-also>}}If you'd rather use a pre-built image, you have several options:
+
+- For NGINX Plus: See [Using NGINX Ingress Controller Plus JWT token in a Docker Config Secret]({{< relref "installation/using-the-jwt-token-docker-secret.md" >}}) and [Getting the F5 Registry NGINX Ingress Controller Image]({{< relref "installation/nic-images/pulling-ingress-controller-image" >}}).
+- For NGINX OSS: Get images from [DockerHub](https://hub.docker.com/r/nginx/nginx-ingress/) or [GitHub Container](https://github.com/nginxinc/kubernetes-ingress/pkgs/container/kubernetes-ingress).
+{{</see-also>}}
 
 ## Prerequisites
 
@@ -16,113 +22,146 @@ To get started, you'll need the following software installed on your machine:
 - [GNU Make](https://www.gnu.org/software/make/)
 - [git](https://git-scm.com/)
 - [OpenSSL](https://www.openssl.org/), optionally, if you would like to generate a self-signed certificate and a key for the default server.
-- For NGINX Plus, you must have the NGINX Plus license -- the certificate (`nginx-repo.crt`) and the key (`nginx-repo.key`).
+- For NGINX Plus users, download the certificate (_nginx-repo.crt_) and key (_nginx-repo.key_) from [MyF5](https://my.f5.com).
 
-Even though the NGINX Ingress Controller is written in Golang, you don't need it installed. You can either download the binary file or build the NGINX Ingress Controller in a Docker container.
+Although NGINX Ingress Controller is written in Golang, you don't need to have Golang installed. You can either download the precompiled binary file or build NGINX Ingress Controller in a Docker container.
 
 ## Build the image and push it to a private registry
 
-We build the image using the make utility and the provided `Makefile`. Let’s create the NGINX Ingress Controller binary, build an image and push the image to the private registry.
+Here's how to create the NGINX Ingress Controller binary, build the image, and upload that image to your private repository.
 
-**Note**: If you have a local golang environment and you want to build the binary, you can remove `TARGET=download` from the `make` commands. If you want to build the binary, but you don't have a local golang environment you can use `TARGET=container`.
+{{<note>}}If you have a local Golang environment and would like to build the binary yourself, remove `TARGET=download` from the `make` commands. <br> If you don't have Golang but still want to build the binary, then use `TARGET=container`.{{</note>}}
 
-1. Make sure to run the `docker login` command first to log in to the registry.
+### Initial steps
 
-   If you’re using Google Container Registry, make sure you’re logged into the gcloud tool by running the `gcloud auth login` and `gcloud auth configure-docker` commands.
+We'll guide you through building NGINX Ingress Controller v3.2.1. To build a different version, simply replace `v3.2.1` with your chosen version.
 
-1. Clone the NGINX Ingress Controller repo:
+1. Begin by signing into your private registry using the `docker login` command. Replace `<my-docker-registry>` with the actual path to your private registry. If you're using Google Container Registry, you'll also need to run `gcloud auth login` and `gcloud auth configure-docker`.
 
-    ```console
+    ```shell
+    docker login <my-docker-registry>
+    ```
+
+2. Next, clone the NGINX Ingress Controller's GitHub repository, specifying the version you want. For instance, here's how to clone version `v3.2.1`:
+
+    ```shell
     git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.2.1
     cd kubernetes-ingress
     ```
 
-1. Build the image:
-    - For **NGINX**:
+### For NGINX
 
-      ```console
-      make debian-image PREFIX=myregistry.example.com/nginx-ingress TARGET=download
-      ```
+1. Build the image. Replace `<my-docker-registry>` with your private registry's path.
 
-      or if you wish to use alpine
-
-      ```console
-      make alpine-image PREFIX=myregistry.example.com/nginx-ingress TARGET=download
-      ```
-
-      `myregistry.example.com/nginx-ingress` defines the repo in your private registry where the image will be pushed. Substitute that value with the repo in your private registry.
-
-      As a result, the image **myregistry.example.com/nginx-ingress:3.2.1** is built. Note that the tag `3.2.1` comes from the `VERSION` variable, defined in the Makefile.
-
-    - For **NGINX Plus**, first, make sure that the certificate (`nginx-repo.crt`) and the key (`nginx-repo.key`) of your license are located in the root of the project:
-
-      ```console
-      $ ls nginx-repo.*
-      nginx-repo.crt  nginx-repo.key
-      ```
-
-      Then run:
-
-      ```console
-      make debian-image-plus PREFIX=myregistry.example.com/nginx-plus-ingress TARGET=download
-      ```
-
-      `myregistry.example.com/nginx-plus-ingress` defines the repo in your private registry where the image will be pushed. Substitute that value with the repo in your private registry.
-
-      As a result, the image **myregistry.example.com/nginx-plus-ingress:3.2.1** is built. Note that the tag `3.2.1` comes from the `VERSION` variable, defined in the Makefile.
-
-      **Note**: In the event of a patch version of [NGINX Plus being released](/nginx/releases/), make sure to rebuild your image to get the latest version. If your system is caching the Docker layers and not updating the packages, add `DOCKER_BUILD_OPTIONS="--pull --no-cache"` to the `make` command.
-
-1. Push the image:
-
-    ```console
-    make push PREFIX=myregistry.example.com/nginx-ingress
+    ```shell
+    make debian-image PREFIX=<my-docker-registry>/nginx-ingress TARGET=download
     ```
 
-    **Note**: If you're using a different tag, append `TAG=your-tag` to the command above.
+    or for an Alpine-based image:
 
-Next you will find the details about available Makefile targets and variables.
+    ```shell
+    make alpine-image PREFIX=<my-docker-registry>/nginx-ingress TARGET=download
+    ```
+
+    <br>
+
+    **Result**: The image `<my-docker-registry>/nginx-ingress:3.2.1` is built. The tag `3.2.1` comes from the `VERSION` variable defined in the [_Makefile_](#makefile-details).
+
+2. Upload the image you've built. If you're using a custom tag, add `TAG=your-tag` to the end of the command.
+
+    ```shell
+    make push PREFIX=<my-docker-registry>/nginx-ingress
+    ```
+
+### For NGINX Plus
+
+1. Place your NGINX Plus license files (`nginx-repo.crt` and `nginx-repo.key`) in the project's root folder.
+2. Build the image. Replace `<my-docker-registry>` with your private registry's path.
+
+    ```shell
+    make debian-image-plus PREFIX=<my-docker-registry>/nginx-plus-ingress TARGET=download
+    ```
+
+    <br>
+
+    **Result**: The image `<my-docker-registry>/nginx-ingress:3.2.1` is built. The tag `3.2.1` comes from the `VERSION` variable defined in the [_Makefile_](#makefile-details).
+
+3. Upload the image you've built. If you're using a custom tag, add `TAG=your-tag` to the end of the command.
+
+    ```shell
+    make push PREFIX=<my-docker-registry>/nginx-plus-ingress
+    ```
+
+### Next Steps
+
+For details on the available _Makefile_ targets and variables, proceed to the next section.
+
+## Makefile details
 
 ### Makefile targets
 
-You can see a list of all the targets by running `make` without any target or `make help`.
+{{<tip>}}Run the `make` command without a target or use `make help` to see a list of available _Makefile_ targets. {{</tip>}}
 
-Below you can find some of the most useful targets in the **Makefile**:
+Here are some key targets:
 
-- **build**: creates the NGINX Ingress Controller binary using the local golang environment (ignored when `TARGET` is `container`).
-- **alpine-image**: for building an alpine-based image with NGINX.
-- **alpine-image-plus**: for building an alpine-based image with NGINX Plus.
-- **alpine-image-plus-fips**: for building an alpine-based image with NGINX Plus and FIPS inside.
-- **debian-image**: for building a debian-based image with NGINX.
-- **debian-image-plus**: for building a debian-based image with NGINX Plus.
-- **debian-image-nap-plus**: for building a debian-based image with NGINX Plus and the [NGINX App Protect WAF](/nginx-app-protect/) module.
-- **debian-image-dos-plus**: for building a debian-based image with NGINX Plus and the [NGINX App Protect DoS](/nginx-app-protect-dos/) module.
-- **debian-image-nap-dos-plus**: for building a debian-based image with NGINX Plus, [NGINX App Protect WAF](/nginx-app-protect/) and [NGINX App Protect DoS](/nginx-app-protect-dos/) modules.
-- **ubi-image**: for building an ubi-based image with NGINX for [Openshift](https://www.openshift.com/) clusters.
-- **ubi-image-plus**: for building an ubi-based image with NGINX Plus for [Openshift](https://www.openshift.com/) clusters.
-- **ubi-image-nap-plus**: for building an ubi-based image with NGINX Plus and the [NGINX App Protect WAF](/nginx-app-protect/) module for [Openshift](https://www.openshift.com/) clusters.
-- **ubi-image-dos-plus**: for building an ubi-based image with NGINX Plus and the [NGINX App Protect DoS](/nginx-app-protect-dos/) module for [Openshift](https://www.openshift.com/) clusters.
-- **ubi-image-nap-dos-plus**: for building an ubi-based image with NGINX Plus, [NGINX App Protect WAF](/nginx-app-protect/) and the [NGINX App Protect DoS](/nginx-app-protect-dos/) module for [Openshift](https://www.openshift.com/) clusters.
-Note: You need to store your RHEL organization and activation keys in a file named `rhel_license` in the project root. Example:
+{{<bootstrap-table "table table-striped table-bordered">}}
+| <div style="width:200px">Target | Description                                                                                                                                                                                                  |
+|---------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **build**                       | Creates the NGINX Ingress Controller binary with your local Go environment.                                                                                                                                  |
+| **alpine-image**                | Builds an Alpine-based image with NGINX.                                                                                                                                                                     |
+| **alpine-image-plus**           | Builds an Alpine-based image with NGINX Plus.                                                                                                                                                                |
+| **alpine-image-plus-fips**      | Builds an Alpine-based image with NGINX Plus and FIPS.                                                                                                                                                       |
+| **debian-image**                | Builds a Debian-based image with NGINX.                                                                                                                                                                      |
+| **debian-image-plus**           | Builds a Debian-based image with NGINX Plus.                                                                                                                                                                 |
+| **debian-image-nap-plus**       | Builds a Debian-based image with NGINX Plus and the [NGINX App Protect WAF](/nginx-app-protect/) module.                                                                                                     |
+| **debian-image-dos-plus**       | Builds a Debian-based image with NGINX Plus and the [NGINX App Protect DoS](/nginx-app-protect-dos/) module.                                                                                                 |
+| **debian-image-nap-dos-plus**   | Builds a Debian-based image with NGINX Plus, [NGINX App Protect WAF](/nginx-app-protect/) and [NGINX App Protect DoS](/nginx-app-protect-dos/) modules.                                                      |
+| **ubi-image**                   | Builds a UBI-based image with NGINX for [OpenShift](https://www.openshift.com/) clusters.                                                                                                                    |
+| **ubi-image-plus**              | Builds a UBI-based image with NGINX Plus for [OpenShift](https://www.openshift.com/) clusters.                                                                                                               |
+| **ubi-image-nap-plus**          | Builds a UBI-based image with NGINX Plus and the [NGINX App Protect WAF](/nginx-app-protect/) module for [OpenShift](https://www.openshift.com/) clusters.                                                   |
+| **ubi-image-dos-plus**          | Builds a UBI-based image with NGINX Plus and the [NGINX App Protect DoS](/nginx-app-protect-dos/) module for [OpenShift](https://www.openshift.com/) clusters.                                               |
+| **ubi-image-nap-dos-plus**      | Builds a UBI-based image with NGINX Plus, [NGINX App Protect WAF](/nginx-app-protect/) and the [NGINX App Protect DoS](/nginx-app-protect-dos/) module for [OpenShift](https://www.openshift.com/) clusters. |
+{{</bootstrap-table>}}
 
-  ```console
-  RHEL_ORGANIZATION=1111111
-  RHEL_ACTIVATION_KEY=your-key
-  ```
+<br>
 
-A few other useful targets:
+{{<important>}}
+Store your RHEL organization and activation keys in a file named _rhel_license_ in the project root. For example:
 
-- **push**: pushes the image to the Docker registry specified in `PREFIX` and `TAG` variables.
-- **all**: executes test `test`, `lint`, `verify-codegen`, `update-crds` and `debian-image`. If one of the targets fails, the execution process stops, reporting an error.
-- **test**: runs unit tests.
-- **certificate-and-key**: The Ingress Controller requires a certificate and a key for the default HTTP/HTTPS server. You can reference them in a TLS Secret in a command-line argument to the Ingress Controller. As an alternative, you can add a file in the PEM format with your certificate and key to the image as `/etc/nginx/secrets/default`. Optionally, you can generate a self-signed certificate and a key using this target. Note that you must add the `ADD` instruction in the Dockerfile to copy the cert and the key to the image.
+```text
+RHEL_ORGANIZATION=1111111
+RHEL_ACTIVATION_KEY=your-key
+```
+
+{{</important>}}
+
+<br>
+
+Other useful targets:
+
+{{<bootstrap-table "table table-striped table-bordered">}}
+| <div style="width:200px">Target</div> | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+|---------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **push**                              | Pushes the built image to the Docker registry. Uses `PREFIX` and `TAG` as settings.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **all**                               | Runs `test`, `lint`, `verify-codegen`, `update-crds`, and `debian-image`. Stops and reports an error if any of the targets fail.                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **test**                              | Runs unit tests.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **certificate-and-key**               | The default HTTP/HTTPS server needs a certificate and a key. You have a few options: <ul><li>Reference them using a TLS Secret through a command-line argument when starting NGINX Ingress Controller.</li><li>Add them directly to the image as a PEM-formatted file at the path `/etc/nginx/secrets/default`.</li><li>Generate a self-signed certificate and key with this target.</li></ul> Note, if you choose to add the certificate and key directly, you must include an `ADD` instruction in your Dockerfile to copy the certificate and key to the image. |
+{{</bootstrap-table>}}
+
+<br>
 
 ### Makefile variables
 
-The **Makefile** contains the following main variables for you to customize (either by changing the Makefile or by overriding the variables in the make command):
+The _Makefile_ includes the following main variables. You can customize these variables by changing them directly in the _Makefile_ or overriding them when running the `make` command.
 
-- **ARCH** -- the architecture of the image (and the binary). The default value is `amd64`. The most common architectures are `amd64` and `arm64`. Some other popular options are `arm`, `ppc64le` and `s390x`.
-- **PREFIX** -- the name of the image. The default is `nginx/nginx-ingress`.
-- **TAG** -- the tag added to the image. It's set to the version of the Ingress Controller by default.
-- **DOCKER_BUILD_OPTIONS** -- the [options](https://docs.docker.com/engine/reference/commandline/build/#options) for the `docker build` command. For example, `--pull`.
-- **TARGET** -- by default, the Ingress Controller is compiled locally using a `local` golang environment. If you want to compile the Ingress Controller using your local golang environment, make sure that the Ingress Controller repo is in your `$GOPATH`. To compile the Ingress Controller using the Docker [golang](https://hub.docker.com/_/golang/) container, specify `TARGET=container`. If you checked out a tag or are on the latest commit on `main` you can specify `TARGET=download` to avoid compiling the binary.
+{{<bootstrap-table "table table-striped table-bordered">}}
+| <div style="width:200px">Variable</div> | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|-----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **ARCH**                                | Sets the image and binary architecture. Defaults to `amd64`. Other common choices include `arm64`, `arm`, `ppc64le`, and `s390x`.                                                                                                                                                                                                                                                                                                                                                                              |
+| **PREFIX**                              | Names the image. Defaults to `nginx/nginx-ingress`.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **TAG**                                 | Assigns a tag to the image, usually set to the NGINX Ingress Controller's version.                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **DOCKER_BUILD_OPTIONS**                | Provides extra [options](https://docs.docker.com/engine/reference/commandline/build/#options) for the `docker build` command, such as `--pull`.                                                                                                                                                                                                                                                                                                                                                                |
+| **TARGET**                              | Sets the build environment. By default, NGINX Ingress Controller is compiled locally using a local Golang environment. If you choose this option, make sure the NGINX Ingress Controller's repo is in your `$GOPATH`. <br> To compile NGINX Ingress Controller using a Docker [Golang](https://hub.docker.com/_/golang/) container, set `TARGET=container`. If you've checked out a specific tag or are on the latest commit on the `main` branch, you can set `TARGET=download` to skip compiling the binary. |
+{{</bootstrap-table>}}
+
+<br>
