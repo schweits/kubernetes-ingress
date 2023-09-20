@@ -1,5 +1,5 @@
 ---
-title: Using the GCP Marketplace NGINX Ingress Controller
+title: Using the GCP Marketplace NGINX Ingress Controller Image
 description: "Follow these steps to deploy F5 NGINX Ingress Controller through the GCP Marketplace."
 weight: 30
 doctypes: [""]
@@ -17,7 +17,7 @@ NGINX Ingress Controller acts as a Kubernetes Ingress Controller for both NGINX 
 
 ## Before you begin
 
-Before installing NGINX Ingress Controller, review our [Installation with Manifests]({{< relref "installation/installation-with-manifests.md" >}}) guide. This guide shows you how to build a local NGINX Ingress Controller image and set up the required CustomResourceDefinitions (CRDs).
+Before installing NGINX Ingress Controller, review our [Installation with Manifests]({{< relref "installation/installing-nic/installation-with-manifests.md" >}}) guide. This guide shows you how to build a local NGINX Ingress Controller image and set up the required CustomResourceDefinitions (CRDs).
 
 ## Installation
 

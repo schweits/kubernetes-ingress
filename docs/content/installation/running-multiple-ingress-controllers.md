@@ -2,7 +2,7 @@
 title: Running Multiple Ingress Controllers
 
 description: "This document explains how to run multiple NGINX Ingress Controllers."
-weight: 2100
+weight: 400
 doctypes: [""]
 aliases:
     - /multiple-ingress-controllers/

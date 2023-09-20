@@ -2,7 +2,7 @@
 title: Installation with the NGINX Ingress Operator
 
 description: "This document describes how to install the NGINX Ingress Controller in your Kubernetes cluster using the NGINX Ingress Operator."
-weight: 2000
+weight: 300
 doctypes: [""]
 toc: true
 docs: "DOCS-604"

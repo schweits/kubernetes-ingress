@@ -1,7 +1,7 @@
 ---
 title: Installation with Manifests
 description: "This document describes how to install the NGINX Ingress Controller in your Kubernetes cluster using Kubernetes manifests."
-weight: 1800
+weight: 100
 doctypes: [""]
 aliases:
     - /installation/
