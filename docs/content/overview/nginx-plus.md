@@ -1,34 +1,33 @@
 ---
 title: Extensibility with NGINX Plus
-description: "This document explains the key characteristics that NGINX Plus brings on top of NGINX into the NGINX Ingress Controller."
+description: "This document explains how F5 NGINX Plus can extend the functionality of the F5 NGINX Ingress Controller."
 weight: 300
 doctypes: ["concept"]
-toc: true
 docs: "DOCS-611"
 aliases:
   - /nginx-plus/
 ---
 
-NGINX Ingress Controller works with both [NGINX](https://nginx.org/) and [NGINX Plus](https://www.nginx.com/products/nginx/) -- a commercial closed source version of NGINX that comes with additional features and support.
+<br>
 
-Below are the key characteristics that NGINX Plus brings on top of NGINX into the NGINX Ingress Controller.
+The NGINX Ingress Controller works with [NGINX](https://nginx.org/) as well as [NGINX Plus](https://www.nginx.com/products/nginx/), a commercial closed source version of NGINX which has additional features and support from NGINX Inc. The NGINX Ingress Controller can leverage functionality from NGINX Plus to extend its base capabilities.
 
 ## Additional features
 
-- *Real-time metrics* A number metrics about how NGINX Plus and applications are performing are available through the API or a [built-in dashboard](https://docs.nginx.com/nginx-ingress-controller/logging-and-monitoring/status-page/). Optionally, the metrics can be exported to [Prometheus](https://docs.nginx.com/nginx-ingress-controller/logging-and-monitoring/prometheus/).
-- *Additional load balancing methods*. The following additional methods are available: `least_time` and `random two least_time` and their derivatives. See the [documentation](https://nginx.org/en/docs/http/ngx_http_upstream_module.html) for the complete list of load balancing methods.
-- *Session persistence* The *sticky cookie* method is available. See the [Session Persistence for VirtualServer Resources example](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/custom-resources/session-persistence) and the [Session Persistence for Ingress Resources example](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/ingress-resources/session-persistence).
-- *Active health checks*. See the [Support for Active Health Checks for VirtualServer Resources example](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/custom-resources/health-checks) and the [Support for Active Health Checks for Ingress Resources example](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/ingress-resources/health-checks).
-- *JWT validation*. See the [Support for JSON Web Tokens for VirtualServer Resources example (JWTs)](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/custom-resources/jwt) and the [Support for JSON Web Tokens for Ingress Resources example (JWTs)](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/ingress-resources/jwt).
+- _Real-time metrics_: Metrics for NGINX Plus and application performance are available through the API or the [NGINX Status Page]({{< relref "logging-and-monitoring/status-page">}}). These metrics can also be exported to [Prometheus]({{< relref "logging-and-monitoring/prometheus">}}).
+- _Additional load balancing methods_: The `least_time` and `random two least_time` methods and their derivatives become available. The NGINX [`ngx_http_upstream_module` documentation](https://nginx.org/en/docs/http/ngx_http_upstream_module.html) has the complete list of load balancing methods.
+- _Session persistence_: The *sticky cookie* method becomes available. See the [Ingress Resource](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/ingress-resources/session-persistence) and [Custom Resource](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/custom-resources/session-persistence) examples.
+- _Active health checks_:  See the [Ingress Resource](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/ingress-resources/health-checks) and [Custom Resource](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/custom-resources/health-checks) examples.
+- _JWT validation_: See the [Ingress Resource](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/ingress-resources/jwt) and [Custom Resource](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/custom-resources/jwt) examples.
 
-See the [VirtualServer]({{< relref "configuration/virtualserver-and-virtualserverroute-resources" >}}), [Policy]({{< relref "configuration/policy-resource" >}}) and [TransportServer]({{< relref "configuration/transportserver-resource" >}}) docs  for a comprehensive guide of the NGINX Plus features available by using our custom resources
+For a comprehensive guide of NGINX Plus features available with Ingress resources, see the [ConfigMap]({{< relref "configuration/global-configuration/configmap-resource">}}) and [Annotations]({{< relref "configuration/ingress-resources/advanced-configuration-with-annotations">}}) documentation.
 
-For the complete list of available NGINX Plus features available for Ingress resources, see the [ConfigMap]({{< relref "configuration/global-configuration/configmap-resource">}}) and [Annotations]({{< relref "configuration/ingress-resources/advanced-configuration-with-annotations">}}) docs. Note that such features are configured through annotations that start with `nginx.com`, for example, `nginx.com/health-checks`.
+{{< note >}}NGINX Plus features are configured for Ingress resources using Annotations that start with `nginx.com`.{{< /note >}}
+
+For a comprehensive guide of NGINX Plus features available with custom resources, see the [Policy]({{< relref "configuration/policy-resource" >}}), [VirtualServer]({{< relref "configuration/virtualserver-and-virtualserverroute-resources" >}}) and [TransportServer]({{< relref "configuration/transportserver-resource" >}}) documentation.
 
 ## Dynamic reconfiguration
 
-Every time the number of pods of services you expose via an Ingress resource changes, the Ingress Controller updates the configuration of the load balancer to reflect those changes. For NGINX, the configuration file must be changed and the configuration subsequently reloaded. For NGINX Plus, the dynamic reconfiguration is utilized, which allows NGINX Plus to be updated on-the-fly without reloading the configuration. This prevents increase of memory usage during reloads, especially with a high volume of client requests, as well as increased memory usage when load balancing applications with long-lived connections (WebSocket, applications with file uploading/downloading or streaming).
+The NGINX Ingress Controller updates the configuration of the load balancer to reflect changes every time the number of pods exposed through an Ingress resource changes. When using NGINX, the configuration file must be changed then reloaded. 
 
-## Commercial support
-
-Support from NGINX Inc is available for NGINX Plus Ingress Controller.
+For NGINX Plus, its dynamic reconfiguration is utilized, updating NGINX Plus without reloading. This avoids the increase of memory usage caused by reloads (Particularly with large volumes of client requests) and when load balancing applications with long-lived connections (Such as those using WebSockets or handling file uploads, downloads or streaming).
