@@ -19,7 +19,7 @@ To list the available image tags using the Docker registry API, you will also ne
 You can also get the image using alternative methods:
 
 * You can use Docker to pull an NGINX Ingress Controller image with NGINX Plus and push it to your private registry by following the ["Pulling the Ingress Controller Image"]({{< relref "installation/nic-images/pulling-ingress-controller-image" >}}) documentation.
-* You can also build an NGINX Ingress Controller image by following the ["Information on how to build an Ingress Controller image"](https://docs.nginx.com/nginx-ingress-controller/installation/building-ingress-controller-image/) documentation.
+* You can also build an NGINX Ingress Controller image by following the ["Information on how to build an Ingress Controller image"]({{< relref "installation/building-nginx-ingress-controller" >}}) documentation.
 
 If you would like an NGINX Ingress Controller image using NGINX open source, we provide the image through [DockerHub](https://hub.docker.com/r/nginx/nginx-ingress/).
 
