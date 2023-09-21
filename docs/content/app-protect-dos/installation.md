@@ -52,11 +52,11 @@ Alternatively, you can install the App Protect DoS Arbitrator using the YAML man
     kubectl apply -f service/appprotect-dos-arb-svc.yaml
     ```
 
-## Build the Docker Image
+## Build the Docker Image {#build-docker-image}
 
 Take the steps below to create the Docker image that you'll use to deploy NGINX Ingress Controller with App Protect DoS in Kubernetes.
 
-- [Build the NGINX Ingress Controller image]({{< relref "installation/building-nginx-ingress-controller.md" >}})).
+- [Build the NGINX Ingress Controller image]({{< relref "installation/building-nginx-ingress-controller.md" >}}).
 
   When running the `make` command to build the image, be sure to use the `debian-image-dos-plus` target. For example:
 
