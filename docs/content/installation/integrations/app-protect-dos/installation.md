@@ -1,7 +1,7 @@
 ---
 title: Installation with NGINX App Protect DoS
 description: "This document provides an overview of the steps required to use NGINX App Protect DoS with your NGINX Ingress Controller deployment."
-weight: 1800
+weight: 100
 doctypes: [""]
 toc: true
 docs: "DOCS-583"

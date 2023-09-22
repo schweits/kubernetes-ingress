@@ -151,7 +151,7 @@ If you're planning to use the NGINX App Protect DoS module, you must deploy the 
 
 Follow these steps to deploy NGINX Ingress Controller with the NGINX App Protect DoS module:
 
-1. Follow the instructions in [Installation with NGINX App Protect DoS]({{< relref "app-protect-dos/installation.md#build-docker-image" >}}) to build your custom image and upload it to your private Docker registry.
+1. Follow the instructions in [Installation with NGINX App Protect DoS]({{< relref "installation/integrations/app-protect-dos/installation.md#build-docker-image" >}}) to build your custom image and upload it to your private Docker registry.
 
 2. Run the Arbitrator as Kubernetes deployment and service:
 

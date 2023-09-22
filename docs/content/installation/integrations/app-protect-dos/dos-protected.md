@@ -2,7 +2,7 @@
 title: DoS Protected Resource
 
 description: "Dos Protected Resource Specification"
-weight: 1800
+weight: 300
 doctypes: [""]
 toc: true
 docs: "DOCS-581"

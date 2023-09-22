@@ -1,5 +1,5 @@
 ---
-title: Running Multiple Ingress Controllers
+title: Running Multiple NGINX Ingress Controllers
 
 description: "This document explains how to run multiple NGINX Ingress Controllers."
 weight: 400

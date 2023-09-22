@@ -1,8 +1,8 @@
 ---
-title: Using with F5 BIG-IP
+title: F5 BIG-IP
 description: |
   Learn how to use NGINX Ingress Controller with F5 IngressLink to configure your F5 BIG-IP device.
-weight: 2000
+weight: 300
 doctypes: ["concept"]
 toc: true
 docs: "DOCS-600"

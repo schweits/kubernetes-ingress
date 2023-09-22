@@ -2,7 +2,7 @@
 title: Configuration
 
 description: "This document describes how to configure the NGINX App Protect Dos module."
-weight: 1900
+weight: 200
 doctypes: [""]
 toc: true
 docs: "DOCS-580"

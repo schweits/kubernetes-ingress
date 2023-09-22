@@ -1,7 +1,7 @@
 ---
 title: OpenTracing
 description: "This document explains how to use OpenTracing with the Ingress Controller."
-weight: 2000
+weight: 400
 doctypes: [""]
 aliases:
   - /opentracing/
