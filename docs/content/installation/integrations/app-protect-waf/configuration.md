@@ -12,15 +12,15 @@ aliases: ["/app-protect/configuration/"]
 
 ## Global Configuration
 
-NGINX Ingress Controller has a set of global configuration parameters that align with those available in NGINX App Protect WAF. See [ConfigMap keys](/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#modules) for the complete list. The NGINX App Protect WAF parameters use the `app-protect*` prefix.
+NGINX Ingress Controller has a set of global configuration parameters that align with those available in NGINX App Protect WAF. See [ConfigMap keys]({{< relref "configuration/global-configuration/configmap-resource.md#modules" >}}) for the complete list. The NGINX App Protect WAF parameters use the `app-protect*` prefix.
 
 ## Enable NGINX App Protect WAF
 
 You can enable and configure NGINX App Protect WAF on the Custom Resources (VirtualServer, VirtualServerRoute) or on the Ingress-resource basis.
 
-To configure NGINX App Protect WAF on a VirtualServer resource, you would create a Policy Custom Resource referencing the APPolicy Custom Resource, and add this to the VirtualServer definition. See the documentation on the [NGINX App Protect WAF Policy](/nginx-ingress-controller/configuration/policy-resource/#waf).
+To configure NGINX App Protect WAF on a VirtualServer resource, you would create a Policy Custom Resource referencing the APPolicy Custom Resource, and add this to the VirtualServer definition. See the documentation on the [NGINX App Protect WAF Policy]({{< relref "configuration/policy-resource.md#waf" >}}).
 
-To configure NGINX App Protect WAF on an Ingress resource, you would apply the [`app-protect` annotations](/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#app-protect) to each desired resource.
+To configure NGINX App Protect WAF on an Ingress resource, you would apply the [`app-protect` annotations]({{< relref "configuration/ingress-resources/advanced-configuration-with-annotations.md#app-protect" >}}) to each desired resource.
 
 ## NGINX App Protect WAF Policies
 
@@ -108,7 +108,7 @@ To add the [log configurations](/nginx-app-protect-waf/logging-overview/security
 
 1. Create an `APLogConf` Custom Resource manifest.
 2. Add the desired log configuration to the `spec` field in the `APLogConf` resource.
-3. Add the `APLogConf` reference to the [VirtualServer Policy resource](/nginx-ingress-controller/configuration/policy-resource/#waf) or the [Ingress resource](/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#app-protect) as per the documentation.
+3. Add the `APLogConf` reference to the [VirtualServer Policy resource]({{< relref "configuration/policy-resource.md#waf" >}}) or the [Ingress resource]({{< relref "configuration/ingress-resources/advanced-configuration-with-annotations.md#app-protect" >}}) as per the documentation.
 
    > **Note**: The fields from the JSON must be presented in the YAML *exactly* the same, in name and level. NGINX Ingress Controller will transform the YAML into a valid JSON WAF log config.
 
@@ -149,7 +149,7 @@ You can define NGINX App Protect WAF [User-Defined Signatures](/nginx-app-protec
 
  > **Note**: The field `revisionDatetime` is not currently supported.
 
-> **Note**: `APUserSig` resources increase the reload time of NGINX Plus compared with `APPolicy` and `APLogConf` resources. Refer to [NGINX Fails to Start or Reload](/nginx-ingress-controller/app-protect/troubleshooting/#nginx-fails-to-start-or-reload) for more information.
+> **Note**: `APUserSig` resources increase the reload time of NGINX Plus compared with `APPolicy` and `APLogConf` resources. Refer to [NGINX Fails to Start or Reload]({{< relref "troubleshooting/troubleshooting-app-protect-waf.md#nginx-fails-to-start-or-reload" >}}) for more information.
 
 To add the [User Defined Signatures](https://docs.nginx.com/nginx-app-protect-waf/configuration-guide/configuration/#user-defined-signatures) to a VirtualServer or Ingress resource:
 

@@ -86,7 +86,7 @@ If you are using `helm` for deployment, there are two main methods: using *sourc
 
 ### Helm Source
 
-The [Helm installation page for NGINX Ingress Controller](https://docs.nginx.com/nginx-ingress-controller/installation/installation-with-helm/#managing-the-chart-via-sources) has a section describing how to use sources: these are the unique steps for Docker secrets using JWT tokens.
+The [Helm installation page for NGINX Ingress Controller](https://docs.nginx.com/nginx-ingress-controller/installation/installing-nic/installation-with-helm/#managing-the-chart-via-sources) has a section describing how to use sources: these are the unique steps for Docker secrets using JWT tokens.
 
 1. Clone the NGINX [`kubernetes-ingress` repository](https://github.com/nginxinc/kubernetes-ingress).
 1. Navigate to the `deployments/helm-chart` folder of your local clone.
