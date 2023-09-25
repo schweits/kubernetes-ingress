@@ -1,7 +1,7 @@
 ---
 title: Getting the F5 Registry NGINX Ingress Controller Image
 description: "This guide walks you through the process of pulling an F5 NGINX Plus Ingress Controller image from the F5 Docker registry and uploading it to your private registry."
-weight: 10
+weight: 100
 doctypes: ["install"]
 toc: true
 docs: "DOCS-605"

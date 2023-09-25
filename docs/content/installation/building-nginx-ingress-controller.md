@@ -10,7 +10,7 @@ toc: true
 
 {{<see-also>}}If you'd rather use a pre-built image, you have several options:
 
-- For NGINX Plus: See [Using NGINX Ingress Controller Plus JWT token in a Docker Config Secret]({{< relref "installation/using-the-jwt-token-docker-secret.md" >}}) and [Getting the F5 Registry NGINX Ingress Controller Image]({{< relref "installation/nic-images/pulling-ingress-controller-image" >}}).
+- For NGINX Plus: See [Using NGINX Ingress Controller Plus JWT token in a Docker Config Secret]({{< relref "installation/nic-images/using-the-jwt-token-docker-secret.md" >}}) and [Getting the F5 Registry NGINX Ingress Controller Image]({{< relref "installation/nic-images/pulling-ingress-controller-image" >}}).
 - For NGINX OSS: Get images from [DockerHub](https://hub.docker.com/r/nginx/nginx-ingress/) or [GitHub Container](https://github.com/nginxinc/kubernetes-ingress/pkgs/container/kubernetes-ingress).
 {{</see-also>}}
 

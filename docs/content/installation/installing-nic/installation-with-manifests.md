@@ -19,7 +19,7 @@ docs: "DOCS-603"
 
     - For NGINX: Get the image `nginx/nginx-ingress` from [DockerHub](https://hub.docker.com/r/nginx/nginx-ingress).
     - For NGINX Plus: Follow the steps in the [Getting the F5 Registry NGINX Ingress Controller Image]({{< relref "installation/nic-images/pulling-ingress-controller-image.md" >}}) guide.
-    - To pull from the F5 Container registry in your Kubernetes cluster: Follow the steps to [Configure a Docker registry secret with your JWT token]({{< relref "installation/using-the-jwt-token-docker-secret.md" >}}).
+    - To pull from the F5 Container registry in your Kubernetes cluster: Follow the steps to [Configure a Docker registry secret with your JWT token]({{< relref "installation/nic-images/using-the-jwt-token-docker-secret.md" >}}).
     - Or build your own image: Follow the steps in [Building NGINX Ingress Controller]({{< relref "installation/building-nginx-ingress-controller.md" >}}).
 
 2. Clone the NGINX Ingress Controller repository and go the _deployments_ folder:
