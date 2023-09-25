@@ -10,7 +10,7 @@ docs: "DOCS-617"
 
 ## Supported NGINX Ingress Controller Versions
 
-We recommend upgrading to the latest release of the NGINX Ingress Controller. We provide software updates for the most recent release. We provide technical support for F5 customers who are using the most recent version of the NGINX Ingress Controller, and any version released within two years of the current release.
+We recommend upgrading to the latest release of the NGINX Ingress Controller. We provide software updates for the most recent release. We provide technical support for F5 customers who are using the most recent version of NGINX Ingress Controller, and any version released within two years of the current release.
 
 Release 3.0.0 provides support for the `discovery.k8s.io/v1` API version of EndpointSlice, available from Kubernetes 1.21 onwards.
 Release 2.4.2 is compatible with the Kubernetes Ingress v1 API, available in Kubernetes 1.19 and later.
@@ -18,7 +18,7 @@ Release 1.12 supports the Ingress v1beta1 API and continues to receive security 
 
 ## Supported Kubernetes Versions
 
-We explicitly test the NGINX Ingress Controller on a range of Kubernetes platforms for each release, and we list them in the [release notes](/nginx-ingress-controller/releases). We provide technical support for NGINX Ingress Controller on any Kubernetes platform that is currently supported by its provider, and which passes the [Kubernetes conformance tests](https://www.cncf.io/certification/software-conformance/).
+We explicitly test NGINX Ingress Controller on a range of Kubernetes platforms for each release, and we list them in the [release notes](/nginx-ingress-controller/releases). We provide technical support for NGINX Ingress Controller on any Kubernetes platform that is currently supported by its provider, and which passes the [Kubernetes conformance tests](https://www.cncf.io/certification/software-conformance/).
 
 {{< bootstrap-table "table table-bordered table-striped table-responsive" >}}
 | NIC Version | Supported Kubernetes Version | NIC Helm Chart Version | NIC Operator Version | NGINX / NGINX Plus version |
