@@ -13,7 +13,7 @@ docs: "DOCS-603"
 
 ## Prerequisites
 
-{{<note>}} Always use the latest stable release as shown on the [the releases page](https://github.com/nginxinc/kubernetes-ingress/releases). {{</note>}}
+{{<note>}} Always use the latest stable release as shown on the [the releases page]({{< relref "releases.md" >}}). {{</note>}}
 
 1. Get the NGINX Ingress Controller image:
 
@@ -33,7 +33,7 @@ docs: "DOCS-603"
 
 ---
 
-## Set Up role-based access control (RBAC)
+## Set up role-based access control (RBAC)
 
 {{<call-out "important" "Admin access required" >}}You must be a cluster admin to perform the steps in this section. Refer to the documentation for your Kubernetes platform to set up admin access. For Google Kubernetes Engine (GKE), see their [Role-Based Access Control guide](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control).{{</call-out>}}
 

@@ -16,7 +16,7 @@ This document describes how to install the F5 NGINX Ingress Controller in your K
 
 ## Prerequisites
 
-{{<note>}} All documentation should only be used with the latest stable release, indicated on [the releases page](https://github.com/nginxinc/kubernetes-ingress/releases) of the GitHub repository. {{</note>}}
+{{<note>}} All documentation should only be used with the latest stable release, indicated on [the releases page]({{< relref "releases.md" >}}) of the GitHub repository. {{</note>}}
 
 1. Make sure you have access to the Ingress Controller image:
     - For NGINX Ingress Controller, use the image `nginx/nginx-ingress` from [DockerHub](https://hub.docker.com/r/nginx/nginx-ingress).

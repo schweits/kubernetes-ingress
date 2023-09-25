@@ -1694,4 +1694,4 @@ Otherwise, the helm upgrade will not succeed.
 
 ## Previous Releases
 
-To see the previous releases, see the [Releases page](https://github.com/nginxinc/kubernetes-ingress/releases) on the Ingress Controller GitHub repo.
+To see the previous releases, see the [Releases page]({{< relref "releases.md" >}}) on the Ingress Controller GitHub repo.
