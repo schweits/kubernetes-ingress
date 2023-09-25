@@ -40,7 +40,7 @@ spec:
 |``apDosMonitor.timeout`` | Determines how long (in seconds) should NGINX App Protect DoS wait for a response. [App Protect DoS monitor](#dosprotectedresourceapdosmonitor) Default value: 10 seconds for http1/http2 and 5 seconds for grpc. | ``int64`` | No |
 |``apDosPolicy`` | The [App Protect DoS policy](#dosprotectedresourceapdospolicy) of the dos. Accepts an optional namespace. | ``string`` | No |
 |``dosSecurityLog.enable`` | Enables security log. | ``bool`` | No |
-|``dosSecurityLog.apDosLogConf`` | The [App Protect DoS log conf](/nginx-ingress-controller/app-protect-dos/configuration/#app-protect-dos-logs) resource. Accepts an optional namespace. | ``string`` | No |
+|``dosSecurityLog.apDosLogConf`` | The [App Protect DoS log conf]({{< relref "installation/integrations/app-protect-dos/configuration.md#app-protect-dos-logs" >}}) resource. Accepts an optional namespace. | ``string`` | No |
 |``dosSecurityLog.dosLogDest`` | The log destination for the security log. Accepted variables are ``syslog:server=<ip-address &#124; localhost &#124; dns-name>:<port>``, ``stderr``, ``<absolute path to file>``. Default is ``"syslog:server=127.0.0.1:514"``. | ``string`` | No |
 {{% /table %}}
 

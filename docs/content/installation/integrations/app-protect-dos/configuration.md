@@ -14,7 +14,7 @@ This document describes how to configure the NGINX App Protect DoS module
 ## App Protect DoS Configuration
 
 A `DosProtectedResource` is a [Custom Resource](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) that holds the configuration of a collection of protected resources.
-An [Ingress](/nginx-ingress-controller/configuration/ingress-resources/basic-configuration), [VirtualServer and VirtualServerRoute](/nginx-ingress-controller/configuration/virtualserver-and-virtualserverroute-resources/) can be protected by specifying a reference to the DosProtectedResource.
+An [Ingress]({{< relref "configuration/ingress-resources/basic-configuration" >}}), [VirtualServer and VirtualServerRoute]({{< relref "configuration/virtualserver-and-virtualserverroute-resources.md" >}}) can be protected by specifying a reference to the DosProtectedResource.
 
 1. Create an `DosProtectedResource` Custom resource manifest. As an example:
 
@@ -109,7 +109,7 @@ Then add a reference in the `DosProtectedResource` to the `ApDosPolicy`:
       apDosPolicy: "default/dospolicy"
   ```
 
-## App Protect DoS Logs
+## App Protect DoS Logs {#app-protect-dos-logs}
 
 You can set the [App Protect DoS Log configuration](/nginx-app-protect-dos/monitoring/types-of-logs/) by creating an `APDosLogConf` [Custom Resource](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) and specifying the qualified identifier(`namespace/name`) of the `ApDosLogConf` in the `DosProtectedResource`.
 
@@ -159,4 +159,4 @@ Then add a reference in the `DosProtectedResource` to the `APDosLogConf`:
 
 ## Global Configuration
 
-The NGINX Ingress Controller has a set of global configuration parameters that align with those available in the NGINX App Protect DoS module. See [ConfigMap keys](/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#modules) for the complete list. The App Protect parameters use the `app-protect-dos*` prefix.
+The NGINX Ingress Controller has a set of global configuration parameters that align with those available in the NGINX App Protect DoS module. See [ConfigMap keys]({{< relref "configuration/global-configuration/configmap-resource.md#modules" >}}) for the complete list. The App Protect parameters use the `app-protect-dos*` prefix.

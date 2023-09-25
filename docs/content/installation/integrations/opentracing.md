@@ -14,7 +14,7 @@ The Ingress Controller supports [OpenTracing](https://opentracing.io/) with the 
 
 This document explains how to use OpenTracing with the Ingress Controller.
 
-**Note**: The examples below use the snippets annotations, which are disabled by default. To use snippets, set the [`enable-snippets`](/nginx-ingress-controller/configuration/global-configuration/command-line-arguments#cmdoption-enable-snippets) command-line argument.
+**Note**: The examples below use the snippets annotations, which are disabled by default. To use snippets, set the [`enable-snippets`]({{< relref "configuration/global-configuration/command-line-arguments#cmdoption-enable-snippets" >}}) command-line argument.
 
 ## Prerequisites
 
@@ -67,7 +67,7 @@ Consider the following two cases:
             opentracing on;
         ```
 
-   1. To enable OpenTracing for specific paths, (1) you need to use [Mergeable Ingress resources](/nginx-ingress-controller/configuration/ingress-resources/cross-namespace-configuration) and (2) use the location snippets annotation to enable OpenTracing for the paths of a specific Minion Ingress resource:
+   1. To enable OpenTracing for specific paths, (1) you need to use [Mergeable Ingress resources]({{< relref "configuration/ingress-resources/cross-namespace-configuration" >}}) and (2) use the location snippets annotation to enable OpenTracing for the paths of a specific Minion Ingress resource:
 
         ```yaml
         nginx.org/location-snippets: |
@@ -82,7 +82,7 @@ Consider the following two cases:
             opentracing off;
         ```
 
-   1. To disable OpenTracing for specific paths, (1) you need to use [Mergeable Ingress resources](/nginx-ingress-controller/configuration/ingress-resources/cross-namespace-configuration) and (2) use the location snippets annotation to disable OpenTracing for the paths of a specific Minion Ingress resource:
+   1. To disable OpenTracing for specific paths, (1) you need to use [Mergeable Ingress resources]({{< relref "configuration/ingress-resources/cross-namespace-configuration" >}}) and (2) use the location snippets annotation to disable OpenTracing for the paths of a specific Minion Ingress resource:
 
         ```yaml
         nginx.org/location-snippets: |

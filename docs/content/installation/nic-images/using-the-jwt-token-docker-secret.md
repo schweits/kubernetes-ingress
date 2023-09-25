@@ -1,7 +1,7 @@
 ---
-title: Pulling the NGINX Ingress Controller Image with JWT
+title: Getting the NGINX Ingress Controller Image with JWT
 description: "This document explains how to use the NGINX Plus Ingress Controller image from the F5 Docker registry in your Kubernetes cluster by using an NGINX Ingress Controller subscription JWT token."
-weight: 400
+weight: 150
 doctypes: [""]
 toc: true
 ---
@@ -86,7 +86,7 @@ If you are using `helm` for deployment, there are two main methods: using *sourc
 
 ### Helm Source
 
-The [Helm installation page for NGINX Ingress Controller](https://docs.nginx.com/nginx-ingress-controller/installation/installation-with-helm/#managing-the-chart-via-sources) has a section describing how to use sources: these are the unique steps for Docker secrets using JWT tokens.
+The [Helm installation page for NGINX Ingress Controller](https://docs.nginx.com/nginx-ingress-controller/installation/installing-nic/installation-with-helm/#managing-the-chart-via-sources) has a section describing how to use sources: these are the unique steps for Docker secrets using JWT tokens.
 
 1. Clone the NGINX [`kubernetes-ingress` repository](https://github.com/nginxinc/kubernetes-ingress).
 1. Navigate to the `deployments/helm-chart` folder of your local clone.

@@ -15,7 +15,7 @@ F5 IngressLink is the integration between NGINX Ingress Controller and [F5 Conta
 
 ### 1. Install the Ingress Controller with the Integration Enabled
 
-This step depends on how you install the Ingress Controller: using [Manifests](/nginx-ingress-controller/installation/installation-with-manifests) or the [Helm chart](/nginx-ingress-controller/installation/installation-with-helm).
+This step depends on how you install the Ingress Controller: using [Manifests]({{< relref "installation/installing-nic/installation-with-manifests" >}}) or the [Helm chart]({{< relref "installation/installing-nic/installation-with-helm" >}}).
 
 #### Manifests Installation
 
@@ -44,7 +44,7 @@ This step depends on how you install the Ingress Controller: using [Manifests](/
     ```
 
     Note the label `app: ingresslink`. We will use it in the Step 2.
-1. In the [ConfigMap](/nginx-ingress-controller/configuration/global-configuration/configmap-resource), enable the PROXY protocol, which the BIG-IP system will use to pass the client IP and port information to NGINX. For the  `set-real-ip-from` key, use the subnet of the IP, which the BIG-IP system uses to send traffic to NGINX:
+1. In the [ConfigMap]({{< relref "configuration/global-configuration/configmap-resource" >}}), enable the PROXY protocol, which the BIG-IP system will use to pass the client IP and port information to NGINX. For the  `set-real-ip-from` key, use the subnet of the IP, which the BIG-IP system uses to send traffic to NGINX:
 
     ```yaml
     proxy-protocol: "True"
@@ -52,7 +52,7 @@ This step depends on how you install the Ingress Controller: using [Manifests](/
     set-real-ip-from: "0.0.0.0/0"
     ```
 
-1. Deploy the Ingress Controller with additional [command-line arguments](/nginx-ingress-controller/configuration/global-configuration/command-line-arguments):
+1. Deploy the Ingress Controller with additional [command-line arguments]({{< relref "configuration/global-configuration/command-line-arguments" >}}):
 
     ```yaml
     args:
@@ -61,7 +61,7 @@ This step depends on how you install the Ingress Controller: using [Manifests](/
     . . .
     ```
 
-    where `ingresslink` references the name of the IngressLink resource from Step 2, and `report-ingress-status` enables [reporting Ingress statuses](/nginx-ingress-controller/configuration/global-configuration/reporting-resources-status#ingress-resources).
+    where `ingresslink` references the name of the IngressLink resource from Step 2, and `report-ingress-status` enables [reporting Ingress statuses]({{< relref "configuration/global-configuration/reporting-resources-status#ingress-resources" >}}).
 
 #### Helm Installation
 
