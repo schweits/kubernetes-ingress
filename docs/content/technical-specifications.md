@@ -18,7 +18,7 @@ Release 1.12 supports the Ingress v1beta1 API and continues to receive security 
 
 ## Supported Kubernetes Versions
 
-We explicitly test NGINX Ingress Controller on a range of Kubernetes platforms for each release, and we list them in the [release notes](/nginx-ingress-controller/releases). We provide technical support for NGINX Ingress Controller on any Kubernetes platform that is currently supported by its provider, and which passes the [Kubernetes conformance tests](https://www.cncf.io/certification/software-conformance/).
+We explicitly test NGINX Ingress Controller on a range of Kubernetes platforms for each release, and we list them in the [release notes]({{< relref "/releases.md" >}}). We provide technical support for NGINX Ingress Controller on any Kubernetes platform that is currently supported by its provider, and which passes the [Kubernetes conformance tests](https://www.cncf.io/certification/software-conformance/).
 
 {{< bootstrap-table "table table-bordered table-striped table-responsive" >}}
 | NIC Version | Supported Kubernetes Version | NIC Helm Chart Version | NIC Operator Version | NGINX / NGINX Plus version |
@@ -62,7 +62,7 @@ _NGINX Plus images include NGINX Plus R30._
 
 #### **F5 Container registry**
 
-NGINX Plus images are available through the F5 Container registry `private-registry.nginx.com` - see [Using the NGINX IC Plus JWT token in a Docker Config Secret](/nginx-ingress-controller/installation/using-the-jwt-token-docker-secret) and [Pulling the NGINX Ingress Controller image]({{< relref "installation/nic-images/pulling-ingress-controller-image" >}}).
+NGINX Plus images are available through the F5 Container registry `private-registry.nginx.com` - see [Using the NGINX IC Plus JWT token in a Docker Config Secret]({{< relref "/installation/nic-images/using-the-jwt-token-docker-secret.md" >}}) and [Pulling the NGINX Ingress Controller image]({{< relref "/installation/nic-images/pulling-ingress-controller-image.md" >}}).
 
 {{< bootstrap-table "table table-striped table-bordered table-responsive" >}}
 |<div style="width:200px">Name</div> | <div style="width:100px">Base image</div> | <div style="width:200px">Third-party modules</div> | F5 Container Registry Image | Architectures |
@@ -81,7 +81,7 @@ NGINX Plus images are available through the F5 Container registry `private-regis
 
 #### **AWS Marketplace**
 
-We also provide NGINX Plus images through the AWS Marketplace. Please see [Using the AWS Marketplace Ingress Controller Image](/nginx-ingress-controller/installation/using-aws-marketplace-image/) for details on how to set up the required IAM resources in your EKS cluster.
+We also provide NGINX Plus images through the AWS Marketplace. Please see [Using the AWS Marketplace Ingress Controller Image]({{< relref "/installation/nic-images/using-aws-marketplace-image.md" >}}) for details on how to set up the required IAM resources in your EKS cluster.
 
 {{< bootstrap-table "table table-striped table-bordered table-responsive" >}}
 |<div style="width:200px">Name</div> | <div style="width:100px">Base image</div> | <div style="width:200px">Third-party modules</div> | AWS Marketplace Link | Architectures |
@@ -93,7 +93,7 @@ We also provide NGINX Plus images through the AWS Marketplace. Please see [Using
 {{% /bootstrap-table %}}
 
 #### **Google Cloud Marketplace**
-We also provide NGINX Plus images through the Google Cloud Marketplace. Please see [Using GCP Marketplace Ingress Controller](/nginx-ingress-controller/installation/using-gcp-marketplace-package/) for details on how use them.
+We also provide NGINX Plus images through the Google Cloud Marketplace. Please see [Using GCP Marketplace Ingress Controller]({{< relref "/installation/nic-images/using-gcp-marketplace-package.md" >}}) for details on how use them.
 
 {{< bootstrap-table "table table-striped table-bordered table-responsive" >}}
 |<div style="width:200px">Name</div> | <div style="width:100px">Base image</div> | <div style="width:200px">Third-party modules</div> | GCP Marketplace Link | Architectures |
@@ -112,7 +112,3 @@ You can customize an existing Dockerfile or use it as a reference to create a ne
 ## Supported Helm Versions
 
 NGINX Ingress Controller supports [installation via Helm 3.0+]({{< relref "/installation/installing-nic/installation-with-helm.md" >}}).
-
-## Recommended Hardware
-
-See the [Sizing guide](https://www.nginx.com/resources/datasheets/nginx-ingress-controller-kubernetes-sizing-guide/) for recommendations.
