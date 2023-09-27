@@ -111,4 +111,4 @@ You can customize an existing Dockerfile or use it as a reference to create a ne
 
 ## Supported Helm Versions
 
-NGINX Ingress Controller supports [installation via Helm 3.0+]({{< relref "/installation/installing-nic/installation-with-helm.md" >}}).
+NGINX Ingress Controller can be [installed]({{< relref "/installation/installing-nic/installation-with-helm.md" >}}) using Helm 3.0 or later.
