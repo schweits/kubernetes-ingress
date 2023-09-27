@@ -1,131 +1,125 @@
 ---
 title: How NGINX Ingress Controller is Designed
-description: "This document explains how NGINX Ingress Controller works."
+description: "This document explains how the F5 NGINX Ingress Controller is designed, and how it works with NGINX and NGINX Plus."
 weight: 200
-doctypes: [""]
+doctypes: ["reference"]
 toc: true
 docs: "DOCS-609"
 ---
 
-This document explains how NGINX Ingress Controller works. The target audience includes the following two main groups:
+<br>
 
-- *Operators* who would like to know how the software works and also better understand how it can fail.
-- *Developers* who would like to [contribute](https://github.com/nginxinc/kubernetes-ingress/blob/main/CONTRIBUTING.md) to the project.
+The intended audience for this information is primarily the two following groups:
 
-We assume that the reader is familiar with core Kubernetes concepts, such as Pod, Deployment, Service, and Endpoints. Additionally, we recommend reading [this blog post](https://www.nginx.com/blog/inside-nginx-how-we-designed-for-performance-scale/) for an overview of the NGINX architecture.
+- _Operators_ who want to know how the software works and understand how it can fail.
+- _Developers_ who want to [contribute](https://github.com/nginxinc/kubernetes-ingress/blob/main/CONTRIBUTING.md) to the project.
 
-This document is specific to NGINX Ingress Controller, referred to as *Ingress Controller* or *IC*, which is built upon NGINX and NGINX Plus capabilities
+We assume that the reader is familiar with core Kubernetes concepts, such as Pods, Deployments, Services, and Endpoints. For an understanding of how NGINX itself works, you can read the ["Inside NGINX: How We Designed for Performance & Scale"](https://www.nginx.com/blog/inside-nginx-how-we-designed-for-performance-scale/) blog post.
 
-## The Ingress Controller at a High Level
+For conciseness in diagrams, NGINX Ingress Controller is often labelled "IC" on this page.
 
-Let’s begin with a high-level examination of the Ingress Controller (IC). The following figure depicts an example of how the IC exposes two web applications running in a Kubernetes cluster to clients on the internet:
+## NGINX Ingress Controller at a High Level
 
-{{< img title="IC at a high level" src="./img/ic-high-level.png" >}}
+This figure depicts an example of NGINX Ingress Controller exposing two web applications within a Kubernetes cluster to clients on the internet:
+
+{{<img src="./img/ic-high-level.png">}}
+
+{{<note>}} For simplicity, necessary Kubernetes resources like Deployments and Services aren't shown, which Admin and the users also need to create.{{</note>}}
 
 The figure shows:
 
-- A *Kubernetes cluster*.
-- Cluster users *Admin*, *User A* and *User B*, which use the cluster via the *Kubernetes API*.
-- *Clients A* and *Clients B*, which connect to the *Applications A* and *B* deployed by the corresponding users.
-- *IC*, [deployed by *Admin*](/nginx-ingress-controller/installation/installation-with-manifests) in a pod in the namespace *nginx-ingress* and configured via the *ConfigMap nginx-ingress*. For simplicity, we depict only one IC pod; however, *Admin* typically deploys at least two pods for redundancy. The *IC* uses the *Kubernetes API* to get the latest Ingress resources created in the cluster and then configures *NGINX* according to those resources.
-- *Application A* with two pods deployed in the *namespace A* by *User A*. To expose the application to its clients (*Clients A*) via the host `a.example.com`, *User A* creates *Ingress A*.
-- *Application B* with one pod deployed in the *namespace B* by *User B*. To expose the application to its clients (*Clients B*) via the host `b.example.com`, *User B* creates *VirtualServer B*.
-- *Public Endpoint*, which fronts the *IC* pod(s). This is typically a TCP load balancer (cloud, software, or hardware) or a combination of such load balancer with a NodePort service. *Clients A* and *B* connect to their applications via the *Public Endpoint*.
+- A _Kubernetes cluster_.
+- Cluster users _Admin_, _User A_ and _User B_, which use the cluster via the _Kubernetes API_.
+- _Clients A_ and _Clients B_, which connect to the _Applications A_ and _B_ deployed by the corresponding users.
+- _NGINX Ingress Controller_, deployed in a pod with the namespace _nginx-ingress_ and configured using the _ConfigMap resource_ _nginx-ingress_. A single pod is depicted; at least two pods are typically deployed for redundancy. _NGINX Ingress Controller_ uses the _Kubernetes API_ to get the latest Ingress resources created in the cluster and then configures _NGINX_ according to those resources.
+- _Application A_ with two pods deployed in the _namespace A_ by _User A_. To expose the application to its clients (_Clients A_) via the host `a.example.com`, _User A_ creates _Ingress A_.
+- _Application B_ with one pod deployed in the _namespace B_ by _User B_. To expose the application to its clients (_Clients B_) via the host `b.example.com`, _User B_ creates _VirtualServer B_.
+- _Public Endpoint_, which fronts the _NGINX Ingress Controller_ pod(s). This is typically a standalone TCP load balancer (Cloud, software, or hardware) or a combination of a load balancer with a NodePort service. _Clients A_ and _B_ connect to their applications via the _Public Endpoint_.
 
 The yellow and purple arrows represent connections related to the client traffic, and the black arrows represent access to the Kubernetes API.
 
-> For simplicity, many necessary Kubernetes resources like Deployment and Services aren't shown, which Admin and the users also need to create.
+## The NGINX Ingress Controller Pod
 
-Next, let's explore the IC pod.
+The NGINX Ingress Controller pod consists of a single container, which includes the following:
 
-## The Ingress Controller Pod
+- The _NGINX Ingress Controller process_, which configures NGINX according to Ingress and other resources created in the cluster.
+- The _NGINX master process_, which controls NGINX worker processes.
+- _NGINX worker processes_, which handle the client traffic and load balance the traffic to the backend applications.
 
-The IC pod consists of a single container, which in turn includes the following:
+The following is an architectural diagram depicting how those processes interact together and with some external entities:
 
-- *IC process*, which configures NGINX according to Ingress and other resources created in the cluster.
-- *NGINX master process*, which controls NGINX worker processes.
-- *NGINX worker processes*, which handle the client traffic and load balance the traffic to the backend applications.
+{{<img src="./img/ic-pod.png">}}
 
-The following is an architectural diagram that shows how those processes interact together and with some external processes/entities:
+This table describes each connection, starting with its type:
 
-{{< img title="IC pod" src="./img/ic-pod.png" >}}
-
-For brevity, we've omitted the suffix process from the description of the processes.
-
-<!-- TO-DO: after the docs are converted to Hugo, convert this list to a markdown table>
-The table below describes each connection:
-| Connection # | Type | Description |
+| # | Protocols | Description |
 | --- | --- | --- |
--->
+|1|HTTP| _Prometheus_ fetches NGINX Ingress Controller and NGINX metrics with an NGINX Ingress Controller HTTP endpoint (Default `:9113/metrics`). **Note**: *Prometheus* is not required and the endpoint can be turned off. |
+|2|HTTPS| _NGINX Ingress Controller_ reads the _Kubernetes API_ for the latest versions of the resources in the cluster and writes to the API to update the handled resources' statuses and emit events.
+|3|HTTP| _Kubelet_ checks the _NGINX Ingress Controller_ readiness probe (Default `:8081/nginx-ready`) to consider the _NGINX Ingress Controller_ pod [ready](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-conditions).
+|4|File I/O| When _NGINX Ingress Controller_ starts, it reads the _configuration templates_ from the filesystem necessary for configuration generation. The templates are located in the `/` directory of the container and have the `.tmpl` extension
+|5|File I/O| _NGINX Ingress Controller_ writes logs to *stdout* and *stderr*, which are collected by the container runtime.
+|6|File I/O| _NGINX Ingress Controller_ generates NGINX *configuration* based on the resources created in the cluster (See [NGINX Ingress Controller is a Kubernetes Controller](#nginx-ingress-controller-is-a-kubernetes-controller)) and writes it on the filesystem in the `/etc/nginx` folder. The configuration files have a `.conf` extension.
+|7|File I/O| _NGINX Ingress Controller_ writes _TLS certificates_ and _keys_ from any [TLS Secrets](https://kubernetes.io/docs/concepts/configuration/secret/#tls-secrets) referenced in the Ingress and other resources to the filesystem.
+|8|HTTP| _NGINX Ingress Controller_ fetches the [NGINX metrics](https://nginx.org/en/docs/http/ngx_http_stub_status_module.html#stub_status) via the `unix:/var/lib/nginx/nginx-status.sock` UNIX socket and converts it to Prometheus format used in #1. 
+|9|HTTP| To verify a successful configuration reload, _NGINX Ingress Controller_ ensures at least one _NGINX worker_ has the new configuration. To do that, the *IC* checks a particular endpoint via the `unix:/var/lib/nginx/nginx-config-version.sock` UNIX socket.
+|10|N/A|  To start NGINX, NGINX Ingress Controller runs the `nginx` command, which launches the _NGINX master_.
+|11|Signal| To reload NGINX, the _NGINX Ingress Controller_ runs the `nginx -s reload` command, which validates the configuration and sends the [reload signal](https://nginx.org/en/docs/control.html) to the *NGINX master*.
+|12|Signal| To shutdown NGINX, the _NGINX Ingress Controller_ executes `nginx -s quit` command, which sends the graceful shutdown signal to the *NGINX master*.
+|13|File I/O| The _NGINX master_ sends logs to its _stdout_ and _stderr_, which are collected by the container runtime.
+|14|File I/O| The _NGINX master_ reads the _TLS cert and keys_ referenced in the configuration when it starts or reloads.
+|15|File I/O| The _NGINX master_ reads _configuration files_ when it starts or during a reload.
+|16|Signal| The _NGINX master_ controls the [lifecycle of _NGINX workers_](https://nginx.org/en/docs/control.html#reconfiguration) it creates workers with the new configuration and shutdowns workers with the old configuration.
+|17|File I/O| An _NGINX worker_ writes logs to its _stdout_ and _stderr_, which are collected by the container runtime.
+|18|UDP| An _NGINX worker_ sends the HTTP upstream server response latency logs via the Syslog protocol over the UNIX socket `/var/lib/nginx/nginx-syslog.sock` to _NGINX Ingress Controller_. In turn, _NGINX Ingress Controller_ analyzes and transforms the logs into Prometheus metrics.
+|19|HTTP,HTTPS,TCP,UDP| A _client_ sends traffic to and receives traffic from any of the _NGINX workers_ on ports 80 and 443 and any additional ports exposed by the [GlobalConfiguration resource](/nginx-ingress-controller/configuration/global-configuration/globalconfiguration-resource).
+|20|HTTP,HTTPS,TCP,UDP| An _NGINX worker_ sends traffic to and receives traffic from the _backends_.
+|21|HTTP| _Admin_ can connect to the [NGINX stub_status](http://nginx.org/en/docs/http/ngx_http_stub_status_module.html#stub_status) using port 8080 via an _NGINX worker_. By default, NGINX only allows connections from `localhost`.
 
-The numbered list that follows describes each connection with its type in curly brackets:
+### Differences with NGINX Plus
 
-1. (HTTP) *Prometheus* fetches the IC and NGINX metrics via an HTTP endpoint that the *IC* exposes. The default is ``:9113/metrics``. **Note**: *Prometheus* is not required by the IC, the endpoint can be turned off.
-2. (HTTPS) The *IC* reads the *Kubernetes API* to get the latest versions of the resources in the cluster and writes to the API to update the handled resources' statuses and emit events.
-3. (HTTP) *Kubelet* probes the *IC* readiness probe (the default is `:8081/nginx-ready`) to consider the IC pod [ready](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-conditions).
-4. (File I/O) When the *IC* starts, it reads the *configuration templates* necessary for config generation from the filesystem. The templates are located in the `/` directory of the container and have the `.tmpl` extension.
-5. (File I/O) The *IC* writes logs to its *stdout* and *stderr*, which are collected by the container runtime.
-6. (File I/O) The *IC* generates NGINX *configuration* based on the resources created in the cluster (refer to [The Ingress Controller is a Kubernetes Controller](#the-ingress-controller-is-a-kubernetes-controller) section for the list of resources) and writes it on the filesystem in the `/etc/nginx` folder. The configuration files have a `.conf` extension.
-7. (File I/O) The *IC* writes *TLS certificates* and *keys* from any [TLS Secrets](https://kubernetes.io/docs/concepts/configuration/secret/#tls-secrets) referenced in the Ingress and other resources to the filesystem.
-8. (HTTP) The *IC* fetches the [NGINX metrics](https://nginx.org/en/docs/http/ngx_http_stub_status_module.html#stub_status) via the `unix:/var/lib/nginx/nginx-status.sock` UNIX socket and converts it to Prometheus format used in #1.
-9. (HTTP) To consider a configuration reload a success, the *IC* ensures that at least one *NGINX worker* has the new configuration. To do that, the *IC* checks a particular endpoint via the `unix:/var/lib/nginx/nginx-config-version.sock` UNIX socket.
-10. (N/A) To start NGINX, the *IC* runs the `nginx` command, which launches the *NGINX master*.
-11. (Signal) To reload NGINX, the *IC* runs the `nginx -s reload` command, which validates the configuration and sends the [reload signal](https://nginx.org/en/docs/control.html) to the *NGINX master*.
-12. (Signal) To shutdown NGINX, the *IC* executes `nginx -s quit` command, which sends the graceful shutdown signal to the *NGINX master*.
-13. (File I/O) The *NGINX master* sends logs to its *stdout* and *stderr*, which are collected by the container runtime.
-14. (File I/O) The *NGINX master* reads the *TLS cert and keys* referenced in the configuration when it starts or reloads.
-15. (File I/O) The *NGINX master* reads *configuration files* when it starts or during a reload.
-16. (Signal) The *NGINX master* controls the [lifecycle of *NGINX workers*](https://nginx.org/en/docs/control.html#reconfiguration) it creates workers with the new configuration and shutdowns workers with the old configuration.
-17. (File I/O) An *NGINX worker* writes logs to its *stdout* and *stderr*, which are collected by the container runtime.
-18. (UDP) An *NGINX worker* sends the HTTP upstream server response latency logs via the Syslog protocol over the UNIX socket `/var/lib/nginx/nginx-syslog.sock` to the *IC*. In turn, the *IC* analyzes and transforms the logs into Prometheus metrics.
-19. (HTTP,HTTPS,TCP,UDP) A *client* sends traffic to and receives traffic from any of the *NGINX workers* on ports 80 and 443 and any additional ports exposed by the [GlobalConfiguration resource](/nginx-ingress-controller/configuration/global-configuration/globalconfiguration-resource).
-20. (HTTP,HTTPS,TCP,UDP) An *NGINX worker* sends traffic to and receives traffic from the *backends*.
-21. (HTTP) *Admin* can connect to the [NGINX stub_status](http://nginx.org/en/docs/http/ngx_http_stub_status_module.html#stub_status) using port 8080 via an *NGINX worker*. **Note**: By default, NGINX only allows connections from `localhost`.
+The previous diagram depicts NGINX Ingress Controller using NGINX. NGINX Ingress Controller with NGINX Plus has the following differences:
 
-### Differences for NGINX Plus
+- To configure NGINX Plus, NGINX Ingress Controller uses [configuration reloads](#reloading-nginx) and the [NGINX Plus API](http://nginx.org/en/docs/http/ngx_http_api_module.html#api). This allows NGINX Ingress Controller to dynamically change the upstream servers.
+- Instead of the stub status metrics, the extended metrics available from the NGINX Plus API are used.
+- In addition to TLS certs and keys, NGINX Ingress Controllerf writes JWKs from the secrets of the type `nginx.org/jwk`, and NGINX workers read them.
 
-The preceding diagram depicts the IC with NGINX. The IC also supports NGINX Plus with the following important differences:
+## The NGINX Ingress Controller Process
 
-- To configure NGINX Plus, Ingress Controller uses [configuration reloads](#reloading-nginx) and the [NGINX Plus API](http://nginx.org/en/docs/http/ngx_http_api_module.html#api). The latter allows the Ingress Controller to dynamically change the upstream servers of an upstream.
-- Instead of the stub status metrics, the extended metrics are used, which are available via NGINX Plus API.
-- In addition to TLS certs and keys, the IC writes JWKs from the secrets of the type `nginx.org/jwk`, and NGINX workers read them.
+This section covers the architecture of the NGINX Ingress Controller process, including:
 
-## The Ingress Controller Process
-
-This section covers the architecture of the IC process, including:
-
-- How the IC processes a new Ingress resource created by a user.
-- The summary of how the IC works and how it relates to Kubernetes Controllers.
+- How NGINX Ingress Controller processes a new Ingress resource created by a user.
+- A summary of how NGINX Ingress Controller works in relation to others Kubernetes Controllers.
 - The different components of the IC process.
 
 ### Processing a New Ingress Resource
 
-The following diagram depicts how the IC processes a new Ingress resource. We represent the NGINX master and worker processes as a single rectangle *NGINX* for simplicity. Also, note that VirtualServer and VirtualServerRoute resources are processed similarly.
+The following diagram depicts how NGINX Ingress Controller processes a new Ingress resource. The the NGINX master and worker processes are represented as a single rectangle, _NGINX_ for simplicity. VirtualServer and VirtualServerRoute resources are indicated similarly.
 
-{{< img title="IC process" src="./img/ic-process.png" >}}
+{{<img src="./img/ic-process.png">}}
 
-Processing a new Ingress resource involves the following steps, where each step corresponds to the arrow on the diagram with the same number:
+Processing a new Ingress resource involves the following steps: each step corresponds to the arrow on the diagram with the same number:
 
-1. *User* creates a new Ingress resource.
-2. The IC process has a *Cache* of the resources in the cluster. The *Cache* includes only the resources the IC is interested in, such as Ingresses. The *Cache* stays in sync with the Kubernetes API by [watching for changes to the resources](https://kubernetes.io/docs/reference/using-api/api-concepts/#efficient-detection-of-changes).
-3. Once the *Cache* has the new Ingress resource, it notifies the *Control loop* about the changed resource.
-4. The *Control loop* gets the latest version of the Ingress resource from the *Cache*. Because the Ingress resource references other resources, such as TLS Secrets, the *Control loop* gets the latest versions of any referenced resources as well.
-5. The *Control loop* generates TLS certificates and keys from the TLS Secrets and writes them to the filesystem.
-6. The *Control loop* generates and writes the NGINX *configuration files*, which correspond to the Ingress resource, and writes them to the filesystem.
-7. The *Control loop* reloads *NGINX* and waits for *NGINX* to successfully reload. As part of the reload:
-    1. *NGINX* reads the *TLS certs and keys*.
-    1. *NGINX* reads the *configuration files*.
-8. The *Control loop* emits an event for the Ingress resource and updates its status. If the reload fails, the event includes the error message.
+1. _User_ creates a new Ingress resource.
+1. The NGINX Ingress Controller process has a _Cache_ of the resources in the cluster. The _Cache_ includes only the resources NGINX Ingress Controller is concerned with such as Ingresses. The _Cache_ stays in sync with the Kubernetes API by [watching for changes to the resources](https://kubernetes.io/docs/reference/using-api/api-concepts/#efficient-detection-of-changes).
+1. Once the _Cache_ has the new Ingress resource, it notifies the _Control Loop_ about the changed resource.
+1. The _Control Loop_ gets the latest version of the Ingress resource from the _Cache_. Since the Ingress resource references other resources, such as TLS Secrets, the _Control loop_ gets the latest versions of those referenced resources as well.
+1. The _Control Loop_ generates TLS certificates and keys from the TLS Secrets and writes them to the filesystem.
+1. The _Control Loop_ generates and writes the NGINX _configuration files_, which correspond to the Ingress resource, and writes them to the filesystem.
+1. The _Control Loop_ reloads _NGINX_ and waits for _NGINX_ to successfully reload. As part of the reload:
+    1. _NGINX_ reads the _TLS certs and keys_.
+    1. _NGINX_ reads the _configuration files_.
+1. The _Control Loop_ emits an event for the Ingress resource and updates its status. If the reload fails, the event includes the error message.
 
-### The Ingress Controller is a Kubernetes Controller
+### NGINX Ingress Controller is a Kubernetes Controller
 
-Based on the example from the previous section, we can generalize how the IC works:
+With the context from the previous sections, we can generalize how NGINX Ingress Controller works:
 
-*The IC constantly processes both new resources and changes to the existing resources in the cluster. As a result, the NGINX configuration stays up-to-date with the resources in the cluster.*
+*NGINX Ingress Controller constantly processes both new resources and changes to the existing resources in the cluster. As a result, the NGINX configuration stays up-to-date with the resources in the cluster.*
 
-The IC is an example of a [Kubernetes controller](https://kubernetes.io/docs/concepts/architecture/controller/): the IC runs a control loop that ensures NGINX is configured according to the desired state (Ingresses and other resources).
+NGINX Ingress Controller is an example of a [Kubernetes Controller](https://kubernetes.io/docs/concepts/architecture/controller/): NGINX Ingress Controller runs a control loop that ensures NGINX is configured according to the desired state (Ingresses and other resources).
 
-The desired state is concentrated in the following built-in Kubernetes resources and Custom Resources (CRs):
+The desired state is based on the following built-in Kubernetes resources and Custom Resources (CRs):
 
 - Layer 7 Load balancing configuration:
   - Ingresses
@@ -145,176 +139,171 @@ The desired state is concentrated in the following built-in Kubernetes resources
   - ConfigMap (only one resource)
   - GlobalConfiguration (CR, only one resource)
 
-The IC can watch additional Custom Resources, which are less common and not enabled by default:
+NGINX Ingress Controller can watch additional Custom Resources, which are less common and not enabled by default:
 
-- [NGINX App Protect resources](/nginx-ingress-controller/app-protect/configuration/) (APPolicies, APLogConfs, APUserSigs)
+- [NGINX App Protect resources]({{< relref "app-protect-dos/configuration" >}}) (APPolicies, APLogConfs, APUserSigs)
 - IngressLink resource (only one resource)
 
-In the next section, we examine the different components of the IC process.
+## NGINX Ingress Controller Process Components
 
-## Ingress Controller Process Components
+In this section, we describe the components of the NGINX Ingress Controller process and how they interact, including:
 
-In this section, we describe the components of the IC process and how they interact, including:
-
-1. How the IC watches for resources changes.
-1. The main components of the IC control loop.
+1. How NGINX Ingress Controller watches for resources changes.
+1. The main components of the NGINX Ingress Controller _Control Loop_.
 1. How those components process a resource change.
-1. A few additional components, which are crucial for processing changes.
+1. Additional components that are crucial for processing changes.
 
-The IC is written in [go](https://golang.org/) and relies heavily on the [Go client for Kubernetes](https://github.com/kubernetes/client-go). In the sections next, we include links to the code on GitHub when necessary.
+NGINX Ingress Controller is written in [Go](https://golang.org/) and relies heavily on the [Go client for Kubernetes](https://github.com/kubernetes/client-go). Where relevant, we include links to the source code on GitHub.
 
 ### Resource Caches
 
-In the section [Processing a New Ingress Resource](#processing-a-new-ingress-resource), we mentioned that the IC has a cache of the resources in the cluster that stays in sync with the Kubernetes API by watching for changes to the resources. We also mentioned that once cache is updated, it notifies the control loop about the changed resource.
+In an earlier section, [Processing a New Ingress Resource](#processing-a-new-ingress-resource), we mentioned that NGINX Ingress Controller has a cache of the resources in the cluster that stays in sync with the Kubernetes API by watching them for changes. 
 
-The cache is actually a collection of *informers*. The following diagram shows how changes to resources are processed by the IC.
+We also mentioned that once the cache is updated, it notifies the control loop about the changed resources. The cache is actually a collection of *informers*. The following diagram shows how changes to resources are processed by NGINX Ingress Controller.
 
-{{< img title="IC process components" src="./img/ic-process-components.png" >}}
+{{<img src="./img/ic-process-components.png">}}
 
-- For every resource type the IC monitors, it creates an [*Informer*](https://pkg.go.dev/k8s.io/client-go@v0.21.0/tools/cache#SharedInformer). The *Informer* includes a *Store* that holds the resources of that type. To keep the *Store* in sync with the latest versions of the resources in the cluster, the *Informer* calls the Watch and List *Kubernetes APIs* for that resource type (see the arrow *1. Watch and List* on the diagram).
-- When a change happens in the cluster (for example, a new resource is created), the *Informer* updates its *Store* and invokes [*Handlers*](https://pkg.go.dev/k8s.io/client-go@v0.21.0/tools/cache#ResourceEventHandler) (see the arrow *2. Invoke*) for that *Informer*.
-- The IC registers handlers for every *Informer*. Most of the time, a *Handler* creates an entry for the affected resource in the *Workqueue* where a workqueue element includes the type of the resource and its namespace and name. (See the arrow *3. Put*.)
-- The *Workqueue* always tries to drain itself: if there is an element at the front, the queue will remove the element and send it to the *Controller* by calling a callback function. (See the arrow *4. Send*.)
-- The *Controller* is the primary component in the IC, which represents the control loop. We explain the components in [The Control Loop](#the-control-loop) section. For now, it suffices to know that to process a workqueue element, the *Controller* component gets the latest version of the resource from the *Store* (see the arrow *5. Get*), reconfigures *NGINX* according to the resource (see the arrow *6. Reconfigure*), updates the resource status, and emits an event via the *Kubernetes API* (see the arrow  *7. Update status and emit event*).
+- For every resource type that NGINX Ingress Controller monitors, it creates an [_Informer_](https://pkg.go.dev/k8s.io/client-go@v0.21.0/tools/cache#SharedInformer). The _Informer_ includes a _Store_ that holds the resources of that type. To keep the _Store_ in sync with the latest versions of the resources in the cluster, the _Informer_ calls the Watch and List _Kubernetes APIs_ for that resource type (see the arrow _1. Watch and List_ on the diagram).
+- When a change happens in the cluster (for example, a new resource is created), the _Informer_ updates its _Store_ and invokes [_Handlers_](https://pkg.go.dev/k8s.io/client-go@v0.21.0/tools/cache#ResourceEventHandler) (See the arrow _2. Invoke_) for that _Informer_.
+- NGINX Ingress Controller registers _Handlers_ for every _Informer_. Most of the time, a _Handler_ creates an entry for the affected resource in the _Workqueue_ where a workqueue element includes the type of the resource and its namespace and name (See the arrow _3. Put_).
+- The _Workqueue_ always tries to drain itself: if there is an element at the front, the queue will remove the element and send it to the _Controller_ by calling a callback function (See the arrow _4. Send_).
+- The _Controller_ is the primary component of NGINX Ingress Controller, which represents the _Control Loop_, explained in [The Control Loop](#the-control-loop) section. To process a workqueue element, the _Controller_ component gets the latest version of the resource from the _Store_ (See the arrow _5. Get_), reconfigures _NGINX_ according to the resource (See the arrow _6. Reconfigure*_, updates the resource status, and emits an event via the _Kubernetes API_ (See the arrow  _7. Update status and emit event_).
 
 ### The Control Loop
 
-This section discusses the main components of the IC, which comprise the control loop:
+This section discusses the main components of NGINX Ingress Controller, which comprise the control loop:
 
 - [Controller](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/controller.go#L90)
-  - Runs the IC control loop.
-  - Instantiates *Informers*, *Handlers*, the *Workqueue* and additional helper components.
-  - Includes the sync method (see the next section), which is called by the *Workqueue* to process a changed resource.
-  - Passes changed resources to *Configurator* to re-configure NGINX.
+  - Runs the NGINX Ingress Controller control loop.
+  - Instantiates _Informers_, _Handlers_, the _Workqueue_ and additional helper components.
+  - Includes the sync method), which is called by the _Workqueue_ to process a changed resource.
+  - Passes changed resources to _Configurator_ to re-configure NGINX.
 - [Configurator](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/configs/configurator.go#L95)
   - Generates NGINX configuration files, TLS and cert keys, and JWKs based on the Kubernetes resource.
-  - Uses *Manager* to write the generated files and reload NGINX.
+  - Uses _Manager_ to write the generated files and reload NGINX.
 - [Manager](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/nginx/manager.go#L52)
   - Controls the lifecycle of NGINX (starting, reloading, quitting). See [Reloading NGINX](#reloading-nginx) for more details about reloading.
   - Manages the configuration files, TLS keys and certs, and JWKs.
 
 The following diagram shows how the three components interact:
 
-{{< img src="./img/control-loop.png" title="Control Loop" >}}
+{{<img src="./img/control-loop.png">}}
 
 #### The Controller Sync Method
 
-The Controller [sync](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/controller.go#L663) method is called by the *Workqueue* to process a change of a resource. The method determines the *kind* of the resource and calls the appropriate *sync* method (for example, *syncIngress* for Ingresses).
+The Controller [sync](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/controller.go#L663) method is called by the _Workqueue_ to process a change of a resource. The method determines the _kind_ of the resource and calls the appropriate _sync_ method (Such as _syncIngress_ for Ingress resources). 
 
-Rather than show how all the various sync methods work, we focus on the most important one -- the *syncIngress* method -- and look at how it processes a new Ingress resource, illustrated in the diagram below.
+To explain how the sync methods work, we will examine the most important one: the _syncIngress_ method, and describe how it processes a new Ingress resource.
 
-{{< img src="img/controller-sync.png" title="Controller sync" >}}
+{{<img src="img/controller-sync.png">}}
 
-1. The *Workqueue* calls the *sync* method and passes a workqueue element to it that includes the changed resource *kind* and *key* (the key is the resource namespace/name like “default/cafe-ingress”).
-2. Using the *kind*, the *sync* method calls the appropriate sync method and passes the resource key. For Ingresses, that method is *syncIngress*.
-3. *syncIngress* gets the Ingress resource from the *Ingress Store* using the key. The *Store* is controlled by the *Ingress Informer*, as mentioned in the section [Resource Caches](#resource-caches). **Note**: In the code, we use the helper *storeToIngressLister* type that wraps the *Store*.
-4. *syncIngress* calls *AddOrUpdateIngress* of the *Configuration*, passing the Ingress along. The [Configuration](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/configuration.go#L320) is a component that represents a valid collection of load balancing configuration resources (Ingresses, VirtualServers, VirtualServerRoutes, TransportServers), ready to be converted to the NGINX configuration (see the [Configuration section](#configuration) for more details). *AddOrUpdateIngress* returns a list of [ResourceChanges](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/configuration.go#L59), which must be reflected in the NGINX config. Typically, for a new Ingress resource, the *Configuration* returns only a single *ResourceChange*.
-5. *syncIngress* calls *processChanges*, which processes the single Ingress *ResourceChange*.
-    1. *processChanges* creates an extended Ingress resource (*IngressEx*) that includes the original Ingress resource and its dependencies, such as Endpoints and Secrets, to generate the NGINX configuration. For simplicity, we don’t show this step on the diagram.
-    2. *processChanges* calls *AddOrUpdateIngress* of the *Configurator* and passes the extended Ingress resource.
-6. *Configurator* generates an NGINX configuration file based on the extended Ingress resource and then:
-    1. Calls *Manager’s CreateConfig()* to  update the config for the Ingress resource.
-    2. Calls *Manager’s Reload()* to reload NGINX.
-7. The reload status is propagated from *Manager* to *processChanges*. The status is either a success or a failure with an error message.
-8. *processChanges* calls *updateRegularIngressStatusAndEvent* to update the status of the Ingress resource and emit an event with the status of the reload. Both involve making an API call to the Kubernetes API.
+1. The _Workqueue_ calls the _sync_ method and passes a workqueue element to it that includes the changed resource _kind_ and _key_ (The key is the resource namespace/name such as “default/cafe-ingress”).
+1. Using the _kind_, the _sync_ method calls the appropriate sync method and passes the resource key. For Ingress resources, the method is _syncIngress_.
+1. _syncIngress_ gets the Ingress resource from the *Ingress Store* using the key. The _Store_ is controlled by the _Ingress Informer_. In the code, we use the helper _storeToIngressLister_ type that wraps the _Store_.
+1. _syncIngress_ calls _AddOrUpdateIngress_ of the _Configuration_, passing the Ingress along. The [Configuration](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/configuration.go#L320) is a component that represents a valid collection of load balancing configuration resources (Ingresses, VirtualServers, VirtualServerRoutes, TransportServers), ready to be converted to the NGINX configuration (see the [Configuration section](#configuration) for more details). _AddOrUpdateIngress_ returns a list of [ResourceChanges](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/configuration.go#L59), which must be reflected in the NGINX config. Typically, for a new Ingress resource, the _Configuration_ returns only a single _ResourceChange_.
+1. _syncIngress_ calls _processChanges_, which processes the single Ingress _ResourceChange_.
+    1. _processChanges_ creates an extended Ingress resource (_IngressEx_) that includes the original Ingress resource and its dependencies, such as Endpoints and Secrets, to generate the NGINX configuration. For simplicity, we don’t show this step on the diagram.
+    1. _processChanges_ calls _AddOrUpdateIngress_ of the _Configurator_ and passes the extended Ingress resource.
+1. _Configurator_ generates an NGINX configuration file based on the extended Ingress resource, then:
+    1. Calls _Manager’s CreateConfig()_ to  update the config for the Ingress resource.
+    1. Calls _Manager’s Reload()_ to reload NGINX.
+1. The reload status is propagated from _Manager_ to _processChanges_, and is either a success or a failure with an error message.
+1. _processChanges_ calls _updateRegularIngressStatusAndEvent_ to update the status of the Ingress resource and emit an event with the status of the reload: both make an API call to the Kubernetes API.
 
-Notes:
+**Additional Notes**:
 
-- Some details weren't discussed for simplicity. You can view the source code if you want a fuller picture.
-- The *syncVirtualServer*, *syncVirtualServerRoute*, and *syncTransportServer* methods are similar to syncIngress. The other sync methods are different. However, those methods typically involve finding the affected Ingress, VirtualServer, and TransportServer resources and regenerating a configuration for them.
-- The *Workqueue* has only a single worker thread that calls the sync method synchronously. This means that the control loop processes only one change at a time.
+- Many details are not included for conciseness: the source code provides the most granular detail.
+- The _syncVirtualServer_, _syncVirtualServerRoute_, and _syncTransportServer_ methods are similar to _syncIngress_, while other sync methods are different. However, those methods typically find the affected Ingress, VirtualServer, and TransportServer resources and regenerate the configuration for them.
+- The _Workqueue_ has only a single worker thread that calls the sync method synchronously, meaning the _Control Loop_ processes only one change at a time.
 
 #### Helper Components
 
-There are two additional helper components crucial for processing changes: *Configuration* and *LocalSecretStore*.
+There are two additional helper components crucial for processing changes: _Configuration_ and _LocalSecretStore_.
 
 ##### Configuration
 
-[*Configuration*](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/configuration.go#L320) holds the latest valid state of the IC load balancing configuration resources: Ingresses, VirtualServers, VirtualServerRoutes, TransportServers, and GlobalConfiguration.
+[_Configuration_](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/configuration.go#L320) holds the latest valid state of the NGINX Ingress Controller load balancing configuration resources: Ingresses, VirtualServers, VirtualServerRoutes, TransportServers, and GlobalConfiguration.
 
-The *Configuration* supports add (for add/update) and delete operations on the resources. When you add/update/delete a resource in the Configuration, it performs the following:
+The _Configuration_ supports add, update and delete operations on the resources. When you invoke these operations on a resource in the Configuration, it performs the following:
 
-1. Validates the object (for add/update)
-2. Calculates the changes to the affected resources that are necessary to propagate to the NGINX config, returning the changes to the caller.
+1. Validates the object (For add or update)
+1. Calculates the changes to the affected resources that are necessary to propagate to the NGINX configuration, returning the changes to the caller.
 
-For example, when you add a new Ingress resource, the *Configuration* returns a change requiring the IC to add the configuration for that Ingress to the NGINX config files. Another example: if you make an existing Ingress resource invalid, the *Configuration* returns a change requiring the IC to remove the configuration for that Ingress from the NGINX config files.
+For example, when you add a new Ingress resource, the _Configuration_ returns a change requiring NGINX Ingress Controller to add the configuration for that Ingress to the NGINX configuration files. If you made an existing Ingress resource invalid, the _Configuration_ returns a change requiring NGINX Ingress Controller to remove the configuration for that Ingress from the NGINX configuration files.
 
-Additionally, the *Configuration* ensures that only one Ingress/VirtualServer/TransportServer (TLS Passthrough) holds a particular host (for example, cafe.example.com) and only one TransportServer (TCP/UDP) holds a particular listener (for example, port 53 for UDP). This ensures that no host or listener collisions happen in the NGINX config.
+Additionally, the _Configuration_ ensures that only one Ingress/VirtualServer/TransportServer (TLS Passthrough) resource holds a particular host (For example, cafe.example.com) and only one TransportServer (TCP/UDP) holds a particular listener (Such as port 53 for UDP). This ensures that no host or listener collisions happen in the NGINX configuration.
 
-Ultimately, the IC ensures the NGINX config on the filesystem reflects the state of the objects in the *Configuration* at any point in time.
+Ultimately, NGINX Ingress Controller ensures the NGINX config on the filesystem reflects the state of the objects in the _Configuration_ at any point in time.
 
 ##### LocalSecretStore
 
-[*LocalSecretStore*](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/secrets/store.go#L32) (of the *SecretStore* interface) holds the valid Secret resources and keeps the corresponding files on the filesystem in sync with them. Secrets are used to hold TLS certificates and keys (type `kubernetes.io/tls`), CAs (`nginx.org/ca`), JWKs (`nginx.org/jwk`), and client secrets for an OIDC provider (`nginx.org/oidc`).
+[_LocalSecretStore_](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/secrets/store.go#L32) (of the _SecretStore_ interface) holds the valid Secret resources and keeps the corresponding files on the filesystem in sync with them. Secrets are used to hold TLS certificates and keys (type `kubernetes.io/tls`), CAs (`nginx.org/ca`), JWKs (`nginx.org/jwk`), and client secrets for an OIDC provider (`nginx.org/oidc`).
 
-When *Controller* processes a change to a configuration resource like Ingress, it creates an extended version of a resource that includes the dependencies -- such as Secrets -- necessary to generate the NGINX configuration. *LocalSecretStore* allows *Controller* to get a reference on the filesystem for a secret by the secret key (namespace/name).
+When _Controller_ processes a change to a configuration resource like Ingress, it creates an extended version of a resource that includes the dependencies (Such as Secrets) necessary to generate the NGINX configuration. _LocalSecretStore_ allows _Controller_ to reference the filesystem for a secret using the secret key (namespace/name).
 
 ## Reloading NGINX
 
-The following section covers reloading NGINX in general and specifically how the Ingress Controller implements it.
+The following sections describe how NGINX reloads and how NGINX Ingress Controller specifically affects this process.
 
-### Reloading in General
+### How NGINX reloads work
 
-Reloading NGINX is necessary to apply the new configuration and involves the following actions:
+Reloading NGINX is necessary to apply new configuration changes and occurs with these steps:
 
 1. The administrator sends a HUP (hangup) signal to the NGINX master process to trigger a reload.
 1. The master process brings down the worker processes with the old configuration and starts worker processes with the new configuration.
 1. The administrator verifies the reload has successfully finished.
 
-> Refer to the [NGINX documentation](https://nginx.org/en/docs/control.html#reconfiguration) for more details about reloading. See also [this blog post](https://www.nginx.com/blog/inside-nginx-how-we-designed-for-performance-scale/) for an overview of the NGINX architecture.
-
-#### How to Reload
+The [NGINX documentation](https://nginx.org/en/docs/control.html#reconfiguration) has more details about reloading.
+#### How to reload NGINX and confirm success
 
 The NGINX binary (`nginx`) supports the reload operation with the `-s reload` option. When you run this option:
 
 1. It validates the new NGINX configuration and exits if it is invalid printing the error messages to the stderr.
 1. It sends a HUP signal to the NGINX master process and exits.
 
-Alternatively, you can send a HUP signal to the NGINX master process directly.
+As an alternative, you can send a HUP signal to the NGINX master process directly.
 
-#### How to Confirm Reloading Success
+Once the reload operation has been invoked with `nginx -s reload`, there is no wait period for NGINX to finish reloading. This means it is the responsibility of an administator to check it is finished, for which there are a few options:
 
-`nginx -s reload` doesn't wait for NGINX to finish reloading. As a result, it is the responsibility of the administrator to confirm it. There are a few options:
+- Check if the master process created new worker processes. Two ways are by running `ps` or reading the `/proc` file system.
+- Send an HTTP request to NGINX, to see if a new worker process responds. This signifies that NGINX reloaded successfully: this method requires additional NGINX configuration, explained below.
 
-- Check if the master process created new worker processes. For example, by running `ps` or reading the `/proc` file system.
-- Send an HTTP request to NGINX, and if a new worker process responds, you'll know the NGINX reloaded successfully. Note: this requires additional NGINX config, see the [Reloading in the Ingress Controller section](#reloading-in-the-ic).
+NGINX reloads take roughly 200ms. The factors affecting reload time are configuration size and details, the number of TLS certificates/keys, enabled modules, and available CPU resources.
 
-Reloading takes time, usually at least 200ms. The time depends on the configuration size, the number of TLS certificates/keys, enabled modules, configuration details, and the available CPU resources.
+#### Potential problems
 
-#### Potential Problems
-
-Most of the time, if `nginx -s reload` succeeds, the reload will also succeed. In rare cases the reload fails, the NGINX master will print the error message to the error log. For example:
+Most of the time, if `nginx -s reload` executes, the reload will also succeed. In the rare case a reload fails, the NGINX master process will print the an error message. This is an example:
 
 ```
 2022/07/09 00:56:42 [emerg] 1353#1353: limit_req "one" uses the "$remote_addr" key while previously it used the "$binary_remote_addr" key
 ```
 
-The operation is graceful; reloading doesn't lead to any traffic loss by NGINX. However, frequent reloads can lead to high memory utilization and potentially NGINX stopping with an OOM (Out-Of-Memory) error, resulting in traffic loss. This can happen if you (1) proxy traffic that utilizes long-lived connections (ex: Websockets, gRPC) and (2) reload frequently. In this case, you can end up with multiple generations of NGINX worker processes that are shutting down (old NGINX workers will not shut down until all connections are terminated either by clients or backends, unless you configure [worker_shutdown_timeout](https://nginx.org/en/docs/ngx_core_module.html#worker_shutdown_timeout) which will force old workers to shut down after the timeout). Eventually, all those worker processes can exhaust the system's available memory.
+The operation is graceful; reloading doesn't lead to any traffic loss by NGINX. However, frequent reloads can lead to high memory utilization and potential OOM (Out-Of-Memory) errors, resulting in traffic loss. This can most likely happen if you (1) proxy traffic that utilizes long-lived connections (ex: Websockets, gRPC) and (2) reload frequently. In these scenarios, you can end up with multiple generations of NGINX worker processes that are shutting down which will force old workers to shut down after the timeout). Eventually, all those worker processes can exhaust the system's available memory.
 
-Since both the old and new NGINX worker processes coexist during a reload, reloading can lead to a spike in memory utilization up to two times. Because of the lack of available memory, the NGINX master process can fail to create new worker processes.
+Old NGINX workers will not shut down until all connections are terminated either by clients or backends, unless you configure [worker_shutdown_timeout](https://nginx.org/en/docs/ngx_core_module.html#worker_shutdown_timeout). Since both the old and new NGINX worker processes coexist during a reload, reloading can lead to two spikes in memory utilization. With a lack of available memory, the NGINX master process can fail to create new worker processes.
 
-### Reloading in the IC
+### Reloading in NGINX Ingress Controller
 
-The Ingress Controller reloads NGINX to apply configuration changes.
+NGINX Ingress Controller reloads NGINX to apply configuration changes.
 
-To facilitate reloading, the Ingress Controller configures a server listening on the Unix socket `unix:/var/lib/nginx/nginx-config-version.sock` that responds with the config version for `/configVersion` URI. The Ingress Controller writes the config to  `/etc/nginx/config-version.conf`.
+To facilitate reloading, NGINX Ingress Controller configures a server listening on the Unix socket `unix:/var/lib/nginx/nginx-config-version.sock` that responds with the configuration version for `/configVersion` URI. NGINX Ingress Controller writes the configuration to  `/etc/nginx/config-version.conf`.
 
-A reload involves multiple steps:
+Reloads occur with this sequence of steps:
 
-1. The Ingress Controller updates generated configuration files, including any secrets.
-1. The Ingress Controller updates the config version in `/etc/nginx/config-version.conf`.
-1. The Ingress Controller runs `nginx -s reload`. If the command fails, the Ingress Controller logs the error and considers the reload failed.
-2. Assuming the command succeeds, the Ingress Controller periodically checks for the config version by sending an HTTP request to the config version server on  `unix:/var/lib/nginx/nginx-config-version.sock`.
-3. Once the Ingress Controller sees the correct config version returned by NGINX, it considers the reload successful. If it doesn't see the correct config version after the configurable timeout (see `-nginx-reload-timeout` [cli argument](/nginx-ingress-controller/configuration/global-configuration/command-line-arguments), the Ingress Controller considers the reload failed.
+1. NGINX Ingress Controller updates generated configuration files, including any secrets.
+1. NGINX Ingress Controller updates the config version in `/etc/nginx/config-version.conf`.
+1. NGINX Ingress Controller runs `nginx -s reload`. If the command fails, NGINX Ingress Controller logs the error and considers the reload failed.
+1. If the command succeeds, NGINX Ingress Controller periodically checks for the config version by sending an HTTP request to the config version server on  `unix:/var/lib/nginx/nginx-config-version.sock`.
+1. Once NGINX Ingress Controller sees the correct config version returned by NGINX, it considers the reload successful. If it doesn't see the correct configuration version after the configurable timeout ( [`-nginx-reload-timeout`]({{<relref "configuration/global-configuration/command-line-arguments">}})), NGINX Ingress Controller considers the reload failed.
 
-> The [Ingress Controller Control Loop](#the-control-loop) stops during a reload so that it cannot change any configuration files or reload NGINX until the current reload succeeds or fails.
+The [NGINX Ingress Controller Control Loop](#the-control-loop) stops during a reload so that it cannot affect configuration files or reload NGINX until the current reload succeeds or fails.
 
-### When the Ingress Controller Reloads NGINX
+### When NGINX Ingress Controller Reloads NGINX
 
-The Ingress Controller reloads NGINX every time the Control Loop processes a change that affects the generated NGINX configuration. In general, every time a resource is changed, the Ingress Controller will regenerate the configuration and reload NGINX. A resource could be of any type the Ingress Controller monitors -- see [The Ingress Controller is a Kubernetes Controller](#the-ingress-controller-is-a-kubernetes-controller) section.
+NGINX Ingress Controller reloads NGINX every time the Control Loop processes a change that affects the generated NGINX configuration. In general, every time a monitored resource is changed, NGINX Ingress Controller will regenerate the configuration and reload NGINX.
 
 There are three special cases:
 
-- *Start*. When the Ingress Controller starts, it processes all resources in the cluster and only then reloads NGINX. This avoids creating a "reload storm" by reloading only once.
-- *Batch updates*. When the Ingress Controller receives a number of concurrent requests from the Kubernetes API, it will pause NGINX reloads until the task queue is empty. This reduces the number of reloads to minimize the impact of batch updates and reduce the risk of OOM (Out of Memory) errors.
-- *NGINX Plus*. If the Ingress Controller uses NGINX Plus, it will not reload NGINX Plus for changes to the Endpoints resources. In this case, the Ingress Controller will use the NGINX Plus API to update the corresponding upstreams and skip reloading.
+- *Start*. When NGINX Ingress Controller starts, it processes all resources in the cluster and only then reloads NGINX. This avoids a "reload storm" by reloading only once.
+- *Batch updates*. When NGINX Ingress Controller receives a number of concurrent requests from the Kubernetes API, it will pause NGINX reloads until the task queue is empty. This reduces the number of reloads to minimize the impact of batch updates and reduce the risk of OOM (Out of Memory) errors.
+- *NGINX Plus*. If NGINX Ingress Controller is using NGINX Plus, it will not reload NGINX Plus for changes to the Endpoints resources. In this case, NGINX Ingress Controller will use the NGINX Plus API to update the corresponding upstreams and skip reloading.
