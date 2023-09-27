@@ -61,7 +61,7 @@ This table describes each connection, starting with its type:
 |5|File I/O| _NGINX Ingress Controller_ writes logs to *stdout* and *stderr*, which are collected by the container runtime.
 |6|File I/O| _NGINX Ingress Controller_ generates NGINX *configuration* based on the resources created in the cluster (See [NGINX Ingress Controller is a Kubernetes Controller](#nginx-ingress-controller-is-a-kubernetes-controller)) and writes it on the filesystem in the `/etc/nginx` folder. The configuration files have a `.conf` extension.
 |7|File I/O| _NGINX Ingress Controller_ writes _TLS certificates_ and _keys_ from any [TLS Secrets](https://kubernetes.io/docs/concepts/configuration/secret/#tls-secrets) referenced in the Ingress and other resources to the filesystem.
-|8|HTTP| _NGINX Ingress Controller_ fetches the [NGINX metrics](https://nginx.org/en/docs/http/ngx_http_stub_status_module.html#stub_status) via the `unix:/var/lib/nginx/nginx-status.sock` UNIX socket and converts it to Prometheus format used in #1. 
+|8|HTTP| _NGINX Ingress Controller_ fetches the [NGINX metrics](https://nginx.org/en/docs/http/ngx_http_stub_status_module.html#stub_status) via the `unix:/var/lib/nginx/nginx-status.sock` UNIX socket and converts it to Prometheus format used in #1.
 |9|HTTP| To verify a successful configuration reload, _NGINX Ingress Controller_ ensures at least one _NGINX worker_ has the new configuration. To do that, the *IC* checks a particular endpoint via the `unix:/var/lib/nginx/nginx-config-version.sock` UNIX socket.
 |10|N/A|  To start NGINX, NGINX Ingress Controller runs the `nginx` command, which launches the _NGINX master_.
 |11|Signal| To reload NGINX, the _NGINX Ingress Controller_ runs the `nginx -s reload` command, which validates the configuration and sends the [reload signal](https://nginx.org/en/docs/control.html) to the *NGINX master*.
@@ -157,7 +157,7 @@ NGINX Ingress Controller is written in [Go](https://golang.org/) and relies heav
 
 ### Resource Caches
 
-In an earlier section, [Processing a New Ingress Resource](#processing-a-new-ingress-resource), we mentioned that NGINX Ingress Controller has a cache of the resources in the cluster that stays in sync with the Kubernetes API by watching them for changes. 
+In an earlier section, [Processing a New Ingress Resource](#processing-a-new-ingress-resource), we mentioned that NGINX Ingress Controller has a cache of the resources in the cluster that stays in sync with the Kubernetes API by watching them for changes.
 
 We also mentioned that once the cache is updated, it notifies the control loop about the changed resources. The cache is actually a collection of *informers*. The following diagram shows how changes to resources are processed by NGINX Ingress Controller.
 
@@ -191,7 +191,7 @@ The following diagram shows how the three components interact:
 
 #### The Controller Sync Method
 
-The Controller [sync](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/controller.go#L663) method is called by the _Workqueue_ to process a change of a resource. The method determines the _kind_ of the resource and calls the appropriate _sync_ method (Such as _syncIngress_ for Ingress resources). 
+The Controller [sync](https://github.com/nginxinc/kubernetes-ingress/blob/v1.11.0/internal/k8s/controller.go#L663) method is called by the _Workqueue_ to process a change of a resource. The method determines the _kind_ of the resource and calls the appropriate _sync_ method (Such as _syncIngress_ for Ingress resources).
 
 To explain how the sync methods work, we will examine the most important one: the _syncIngress_ method, and describe how it processes a new Ingress resource.
 
