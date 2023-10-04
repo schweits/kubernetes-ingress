@@ -26,7 +26,7 @@ To get started, you'll need the following software installed on your machine:
 
 Although NGINX Ingress Controller is written in Golang, you don't need to have Golang installed. You can either download the precompiled binary file or build NGINX Ingress Controller in a Docker container.
 
-## Build the image and push it to a private registry
+## Build the image and push it to a private registry {#build-image-push-to-private-repo}
 
 Here's how to create the NGINX Ingress Controller binary, build the image, and upload that image to your private repository.
 

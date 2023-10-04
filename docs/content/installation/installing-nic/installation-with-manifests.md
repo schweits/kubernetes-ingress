@@ -37,67 +37,13 @@ docs: "DOCS-603"
 
 ## Set up role-based access control (RBAC) {#configure-rbac}
 
-{{<call-out "important" "Admin access required" >}}To complete these steps you need admin access to your cluster. Refer to to your Kubernetes platform's documentation to set up admin access. For Google Kubernetes Engine (GKE), you can refer to their [Role-Based Access Control guide](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control).{{</call-out>}}
-
-1. Create a namespace and a service account:
-
-    ```shell
-    kubectl apply -f common/ns-and-sa.yaml
-    ```
-
-2. Create a cluster role and binding for the service account:
-
-    ```shell
-    kubectl apply -f rbac/rbac.yaml
-    ```
-
-3. (App Protect only) Create the *App Protect* role and binding:
-
-    ```shell
-    kubectl apply -f rbac/ap-rbac.yaml
-    ```
-
-4. (App Protect DoS only) Create the *App Protect DoS* role and binding:
-
-    ```shell
-    kubectl apply -f rbac/apdos-rbac.yaml
-    ```
+{{< include "rbac/set-up-rbac.md" >}}
 
 ---
 
 ## Create common resources {#create-common-resources}
 
-In this section, you'll create resources common for most NGINX Ingress Controller installations:
-
-1. (Optional) Create a secret containing a TLS certificate and key for the default NGINX server.
-
-    {{<call-out "important" "Optional step" >}}
-Complete this step only if you're using the [default server TLS secret]({{< relref "configuration/global-configuration/command-line-arguments#cmdoption-default-server-tls-secret.md" >}}) command-line argument. Otherwise, you can skip it. We recommend using your own certificate. 
-{{</call-out>}}
-
-    First, make sure you're in the `kubernetes-ingress/deployment` directory, and then run:
-
-    ```shell
-    kubectl apply -f ../examples/shared-examples/default-server-secret/default-server-secret.yaml
-    ```
-
-    {{<note>}}By default, the server returns a _404 Not Found_ page for all requests where no ingress rules are set up. Although we've provided a self-signed certificate and key for testing purposes, it's best to use your own. {{</note>}}
-
-2. Create a ConfigMap to customize your NGINX settings:
-
-    ```shell
-    kubectl apply -f common/nginx-config.yaml
-    ```
-
-3. Create an IngressClass resource:
-
-    ```shell
-    kubectl apply -f common/ingress-class.yaml
-    ```
-
-    To make this NGINX Ingress Controller instance the default for your cluster, remove the comment from the annotation `ingressclass.kubernetes.io/is-default-class`. Doing this will automatically assign this IngressClass to any new Ingresses that don't specify an `ingressClassName`.
-
-    {{<note>}}NGINX Ingress Controller won't start unless you create an IngressClass resource. {{</note>}}
+{{< include "installation/create-common-resources.md" >}}
 
 ---
 
@@ -153,51 +99,15 @@ You can deploy NGINX Ingress Controller in two ways:
 
 #### Using a deployment
 
-When you deploy with this method, Kubernetes automatically sets up a single NGINX Ingress Controller pod.
-
-- For NGINX, run:
-
-    ```shell
-    kubectl apply -f deployment/nginx-ingress.yaml
-    ```
-
-- For NGINX Plus, run:
-
-    ```shell
-    kubectl apply -f deployment/nginx-plus-ingress.yaml
-    ```
-
-    {{<note>}}Update `nginx-plus-ingress.yaml` to include the image you've chosen from the F5 Container registry or the custom container image you've built. {{</note>}}
+{{< include "installation/manifests/deployment.md" >}}
 
 #### Using a DaemonSet
 
-When you use a DaemonSet, Kubernetes creates an Ingress Controller pod on every node in the cluster.
-
-{{<note>}}
-For guidance on how to limit NGINX Ingress Controller to specific nodes rather than running NGINX Ingress Controller on every node in the cluster, refer to the Kubernetes [DaemonSet docs](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/).
-{{</note>}}
-
-- For NGINX, run:
-
-    ```shell
-    kubectl apply -f daemon-set/nginx-ingress.yaml
-    ```
-
-- For NGINX Plus, run:
-
-    ```shell
-    kubectl apply -f daemon-set/nginx-plus-ingress.yaml
-    ```
-
-    {{<note>}}Update `nginx-plus-ingress.yaml` to include the image you've chosen from the F5 Container registry or the custom container image you've built. {{</note>}}
+{{< include "installation/manifests/daemonset.md" >}}
 
 ### Confirm NGINX Ingress Controller is running
 
-To verify the NGINX Ingress Controller pods are up and running, run:
-
-```shell
-kubectl get pods --namespace=nginx-ingress
-```
+{{< include "installation/manifests/verify-pods-are-running.md" >}}
 
 ---
 
@@ -285,22 +195,22 @@ Kubernetes will automatically allocate two ports on every node in the cluster. T
 
 {{<important>}}Be cautious when performing these steps, as they will remove NGINX Ingress Controller and all related resources, potentially affecting your running services.{{</important>}}
 
-1. Delete the `nginx-ingress` namespace to uninstall NGINX Ingress Controller along with all the auxiliary resources that were created:
+1. o uninstall NGINX Ingress Controller and remove all auxiliary resources, delete the nginx-ingress namespace:
 
     ```shell
     kubectl delete namespace nginx-ingress
     ```
 
-1. Delete the ClusterRole and ClusterRoleBinding:
+1. Next, remove the cluster role and cluster role binding:
 
     ```shell
     kubectl delete clusterrole nginx-ingress
     kubectl delete clusterrolebinding nginx-ingress
     ```
 
-1. Delete the Custom Resource Definitions:
+1. Lastly, delete the Custom Resource Definitions:
 
-    {{<note>}} This step will also remove all associated Custom Resources. {{</note>}}
+    {{<note>}} Performing this step will also remove all associated Custom Resources. {{</note>}}
 
     ```shell
     kubectl delete -f common/crds/
@@ -308,7 +218,7 @@ Kubernetes will automatically allocate two ports on every node in the cluster. T
 
 ---
 
-## Deploy NGINX Ingress Controller with NGINX App Protect DoS
+## Optional Deploy NGINX Ingress Controller with NGINX App Protect DoS
 
 To deploy NGINX Ingress Controller with NGINX App Protect DoS:
 

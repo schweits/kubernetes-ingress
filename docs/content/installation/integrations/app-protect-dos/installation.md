@@ -7,6 +7,8 @@ toc: true
 docs: "DOCS-583"
 ---
 
+{{< custom-styles >}}
+
 > **Note**: The F5 NGINX Kubernetes Ingress Controller integration with F5 NGINX App Protect DoS requires the use of F5 NGINX Plus.
 
 This document provides an overview of the steps required to use NGINX App Protect DoS with your NGINX Ingress Controller deployment. You can visit the linked documents to find additional information and instructions.
@@ -19,7 +21,7 @@ This document provides an overview of the steps required to use NGINX App Protec
     - It is also possible to build your own image and push it to your private Docker registry by following the instructions from [here]({{< relref "installation/building-nginx-ingress-controller.md" >}})).
 2. Clone the Ingress Controller repo:
 
-    ```
+    ``` shell
     git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.2.1
     cd kubernetes-ingress/deployments
     ```
@@ -68,18 +70,46 @@ Take the steps below to create the Docker image that you'll use to deploy NGINX 
 
     If you want to include the App Protect WAF module in the image, you can use the `debian-image-nap-dos-plus` target or the `ubi-image-nap-dos-plus` target for OpenShift.
 
-- [Push the image to your local Docker registry]({{< relref "installation/building-nginx-ingress-controller.md" >}})/#building-the-image-and-pushing-it-to-the-private-registry).
+- [Push the image to your local Docker registry]({{< relref "installation/building-nginx-ingress-controller.md#build-image-push-to-private-repo " >}}).
 
-## Install the Ingress Controller
+## Install NGINX Ingress Controller {#install-nic}
 
 Take the steps below to set up and deploy the NGINX Ingress Controller and App Protect DoS module in your Kubernetes cluster.
 
-1. [Configure role-based access control (RBAC)]({{< relref "installation/installing-nic/installation-with-manifests.mdconfigure-rbac" >}}).
+### Set up role-based access control (RBAC) {#set-up-rbac}
 
-   > **Important**: You must have an admin role to configure RBAC in your Kubernetes cluster.
+{{< include "rbac/set-up-rbac.md" >}}
 
-2. [Create the common Kubernetes resources]({{< relref "installation/installing-nic/installation-with-manifests.md#create-common-resources" >}}).
-3. Enable the App Protect Dos module by adding the `enable-app-protect-dos` [cli argument]({{< relref "configuration/global-configuration/command-line-arguments.md#cmdoption-enable-app-protect-dos" >}}) to your Deployment or DaemonSet file.
-4. [Deploy the Ingress Controller]({{< relref "installation/installing-nic/installation-with-manifests.md#deploy-ingress-controller" >}}).
+### Create Common Resources
 
-For more information, see the [Configuration guide]({{< relref "installation/integrations/app-protect-dos/configuration.md" >}}),the [NGINX Ingress Controller with App Protect DoS example for VirtualServer](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/custom-resources/app-protect-dos) and the [NGINX Ingress Controller with App Protect DoS example for Ingress](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/ingress-resources/app-protect-dos" >}}).
+{{< include "installation/create-common-resources.md" >}}
+
+### Enable NGINX App Protect DoS module
+
+To enable the NGINX App Protect DoS Module:
+
+1. Add the `enable-app-protect-dos` [command-line argument]({{< relref "configuration/global-configuration/command-line-arguments.md#cmdoption-enable-app-protect-dos" >}}) to your Deployment or DaemonSet file.
+
+### Deploy NGINX Ingress Controller
+
+You can deploy NGINX Ingress Controller in two ways:
+
+- **Deployment**. Choose this method if you want the flexibility to change the number of NGINX Ingress Controller replicas dynamically.
+- **DaemonSet**. Choose this option if you want NGINX Ingress Controller to run on all nodes or a specific set of nodes.
+
+{{<note>}}Before setting up a Deployment or DaemonSet resource, update the [command-line arguments]({{< relref "configuration/global-configuration/command-line-arguments.md" >}}) for the NGINX Ingress Controller container in the relevant manifest file to meet your specific needs.{{</note>}}
+
+#### Deploy as a Deployment
+
+{{< include "installation/manifests/deployment.md" >}}
+
+#### Deploy as a DaemonSet
+
+{{< include "installation/manifests/daemonset.md" >}}
+
+#### Confirm NGINX Ingress Controller is running
+
+{{< include "installation/manifests/verify-pods-are-running.md" >}}
+
+
+For more information, see the [Configuration guide]({{< relref "installation/integrations/app-protect-dos/configuration.md" >}}),the [NGINX Ingress Controller with App Protect DoS example for VirtualServer](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/custom-resources/app-protect-dos) and the [NGINX Ingress Controller with App Protect DoS example for Ingress](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/ingress-resources/app-protect-dos).
