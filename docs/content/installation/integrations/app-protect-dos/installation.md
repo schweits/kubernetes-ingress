@@ -1,6 +1,6 @@
 ---
 title: Installation with NGINX App Protect DoS
-description: "This document provides an overview of the steps required to use NGINX App Protect DoS with your NGINX Ingress Controller deployment."
+description: "This document explains the steps to take to use NGINX App Protect DoS with NGINX Ingress Controller."
 weight: 100
 doctypes: [""]
 toc: true
@@ -9,22 +9,86 @@ docs: "DOCS-583"
 
 {{< custom-styles >}}
 
-{{< note >}} The F5 NGINX Kubernetes Ingress Controller integration with F5 NGINX App Protect DoS requires the use of F5 NGINX Plus. {{< /note >}}
+## Before you start
 
-This document provides an overview of the steps required to use NGINX App Protect DoS with your NGINX Ingress Controller deployment. You can visit the linked documents to find additional information and instructions.
+{{< note >}} To use NGINX App Protect DoS with NGINX Ingress Controller, you must have NGINX Plus. {{< /note >}}
 
-## Prerequisites
+### Get the NGINX Plus Controller Image
 
-1. Make sure you have access to the NGINX Ingress Controller image:
-    - For NGINX Plus Ingress Controller, see [here]({{< relref "installation/nic-images/pulling-ingress-controller-image" >}}) for details on how to pull the image from the F5 Docker registry.
-    - To pull from the F5 Container registry in your Kubernetes cluster, configure a docker registry secret using your JWT token from the MyF5 portal by following the instructions from [here]({{< relref "installation/nic-images/using-the-jwt-token-docker-secret" >}}).
-    - It is also possible to build your own image and push it to your private Docker registry by following the instructions from [here]({{< relref "installation/building-nginx-ingress-controller.md" >}})).
-2. Clone the NGINX Ingress Controller repo:
+{{<note>}}Always use the most up-to-date stable release listed on the [releases page]({{< relref "releases.md" >}}).{{</note>}}
 
-    ``` shell
-    git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.2.1
-    cd kubernetes-ingress/deployments
+Choose one of the following methods to get the NGINX Plus Ingress Controller image:
+
+- Download the image using your NGINX Ingress Controller subscription certificate and key. See the [Getting the F5 Registry NGINX Ingress Controller Image]({{< relref "installation/nic-images/pulling-ingress-controller-image.md" >}}) guide.
+- Use your NGINX Ingress Controller subscription JWT token to get the image: Instructions are in [Getting the NGINX Ingress Controller Image with JWT]({{< relref "installation/nic-images/using-the-jwt-token-docker-secret.md" >}}).
+- Build your own image: To build your own image, follow the [Building NGINX Ingress Controller]({{< relref "installation/building-nginx-ingress-controller.md" >}}) guide.
+
+### Clone the repository
+
+Clone the NGINX Ingress Controller repository and go to the _deployments_ folder. Replace `<version_number>` with the specific release you want to use.
+
+```shell
+git clone https://github.com/nginxinc/kubernetes-ingress.git --branch <version_number>
+cd kubernetes-ingress/deployments
+```
+
+For example, if you want to use version 3.2.1, the command would be `git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.2.1`. 
+
+This guide assumes you are using the latest release.
+
+---
+
+
+## Build the Docker Image {#build-docker-image}
+
+Take the steps below to create the Docker image that you'll use to deploy NGINX Ingress Controller with App Protect DoS in Kubernetes.
+
+- [Build the NGINX Ingress Controller image]({{< relref "installation/building-nginx-ingress-controller.md" >}}).
+
+  When running the `make` command to build the image, be sure to use the `debian-image-dos-plus` target. For example:
+
+    ```shell
+    make debian-image-dos-plus PREFIX=<your Docker registry domain>/nginx-plus-ingress
     ```
+
+    Alternatively, if you want to run on an [OpenShift](https://www.openshift.com/) cluster, use the `ubi-image-dos-plus` target.
+
+    If you want to include the App Protect WAF module in the image, you can use the `debian-image-nap-dos-plus` target or the `ubi-image-nap-dos-plus` target for OpenShift.
+
+- [Push the image to your local Docker registry]({{< relref "installation/building-nginx-ingress-controller.md#build-image-push-to-private-repo " >}}).
+
+---
+
+## Set up role-based access control (RBAC) {#set-up-rbac}
+
+{{< include "rbac/set-up-rbac.md" >}}
+
+---
+
+## Create common resources {#create-common-resources}
+
+{{< include "installation/create-common-resources.md" >}}
+
+---
+
+## Deploy NGINX Ingress Controller {#deploy-ingress-controller}
+
+You have two options for deploying NGINX Ingress Controller:
+
+- **Deployment**. Choose this method for the flexibility to dynamically change the number of NGINX Ingress Controller replicas.
+- **DaemonSet**. Choose this method if you want NGINX Ingress Controller to run on all nodes or a subset of nodes.
+
+Before you start, update the [command-line arguments]({{< relref "configuration/global-configuration/command-line-arguments.md" >}}) for the NGINX Ingress Controller container in the relevant manifest file to meet your specific requirements.
+
+### Using a Deployment
+
+{{< include "installation/manifests/deployment.md" >}}
+
+### Using a DaemonSet
+
+{{< include "installation/manifests/daemonset.md" >}}
+
+---
 
 ## Install the App Protect DoS Arbitrator
 
@@ -54,60 +118,17 @@ Alternatively, you can install the App Protect DoS Arbitrator using the YAML man
     kubectl apply -f service/appprotect-dos-arb-svc.yaml
     ```
 
-## Build the Docker Image {#build-docker-image}
+---
 
-Take the steps below to create the Docker image that you'll use to deploy NGINX Ingress Controller with App Protect DoS in Kubernetes.
-
-- [Build the NGINX Ingress Controller image]({{< relref "installation/building-nginx-ingress-controller.md" >}}).
-
-  When running the `make` command to build the image, be sure to use the `debian-image-dos-plus` target. For example:
-
-    ```shell
-    make debian-image-dos-plus PREFIX=<your Docker registry domain>/nginx-plus-ingress
-    ```
-
-    Alternatively, if you want to run on an [OpenShift](https://www.openshift.com/) cluster, use the `ubi-image-dos-plus` target.
-
-    If you want to include the App Protect WAF module in the image, you can use the `debian-image-nap-dos-plus` target or the `ubi-image-nap-dos-plus` target for OpenShift.
-
-- [Push the image to your local Docker registry]({{< relref "installation/building-nginx-ingress-controller.md#build-image-push-to-private-repo " >}}).
-
-## Install NGINX Ingress Controller {#install-nic}
-
-Take the steps below to set up and deploy the NGINX Ingress Controller and App Protect DoS module in your Kubernetes cluster.
-
-### Set up role-based access control (RBAC) {#set-up-rbac}
-
-{{< include "rbac/set-up-rbac.md" >}}
-
-### Create Common Resources
-
-{{< include "installation/create-common-resources.md" >}}
-
-### Enable NGINX App Protect DoS module
+## Enable NGINX App Protect DoS module
 
 To enable the NGINX App Protect DoS Module:
 
 1. Add the `enable-app-protect-dos` [command-line argument]({{< relref "configuration/global-configuration/command-line-arguments.md#cmdoption-enable-app-protect-dos" >}}) to your Deployment or DaemonSet file.
 
-### Deploy NGINX Ingress Controller
+---
 
-You can deploy NGINX Ingress Controller in two ways:
-
-- **Deployment**. Choose this method if you want the flexibility to change the number of NGINX Ingress Controller replicas dynamically.
-- **DaemonSet**. Choose this option if you want NGINX Ingress Controller to run on all nodes or a specific set of nodes.
-
-{{<note>}}Before setting up a Deployment or DaemonSet resource, update the [command-line arguments]({{< relref "configuration/global-configuration/command-line-arguments.md" >}}) for the NGINX Ingress Controller container in the relevant manifest file to meet your specific needs.{{</note>}}
-
-#### Deploy as a Deployment
-
-{{< include "installation/manifests/deployment.md" >}}
-
-#### Deploy as a DaemonSet
-
-{{< include "installation/manifests/daemonset.md" >}}
-
-#### Confirm NGINX Ingress Controller is running
+## Confirm NGINX Ingress Controller is running
 
 {{< include "installation/manifests/verify-pods-are-running.md" >}}
 

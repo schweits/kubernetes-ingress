@@ -13,25 +13,32 @@ docs: "DOCS-603"
 
 ## Before you start
 
+### Get the NGINX Controller Image
+
 {{<note>}}Always use the most up-to-date stable release listed on the [releases page]({{< relref "releases.md" >}}).{{</note>}}
 
-1. Get the NGINX Ingress Controller image:
+Choose one of the following methods to get the NGINX Ingress Controller image:
 
-    - For NGINX: Download the image `nginx/nginx-ingress` from [DockerHub](https://hub.docker.com/r/nginx/nginx-ingress).
-    - For NGINX Plus: See the [Getting the F5 Registry NGINX Ingress Controller Image]({{< relref "installation/nic-images/pulling-ingress-controller-image.md" >}}) guide.
-    - From the F5 Container registry: See [Getting the NGINX Ingress Controller Image with JWT]({{< relref "installation/nic-images/using-the-jwt-token-docker-secret.md" >}}).
-    - Build your own image: See [Building NGINX Ingress Controller]({{< relref "installation/building-nginx-ingress-controller.md" >}}).
+- **NGINX Ingress Controller**: Download the image `nginx/nginx-ingress` from [DockerHub](https://hub.docker.com/r/nginx/nginx-ingress).
+- **NGINX Plus Ingress Controller**: You have two options for this, both requiring an NGINX Ingress Controller subscription.
 
-2. Clone the NGINX Ingress Controller repository and go the _deployments_ folder. Replace `<version_number>` with the specific release you want to use.
+  - Download the image using your NGINX Ingress Controller subscription certificate and key. See the [Getting the F5 Registry NGINX Ingress Controller Image]({{< relref "installation/nic-images/pulling-ingress-controller-image.md" >}}) guide.
+  - Use your NGINX Ingress Controller subscription JWT token to get the image: Instructions are in [Getting the NGINX Ingress Controller Image with JWT]({{< relref "installation/nic-images/using-the-jwt-token-docker-secret.md" >}}).
 
-    ```shell
-    git clone https://github.com/nginxinc/kubernetes-ingress.git --branch <version_number>
-    cd kubernetes-ingress/deployments
-    ```
+- **Build your own image**: To build your own image, follow the [Building NGINX Ingress Controller]({{< relref "installation/building-nginx-ingress-controller.md" >}}) guide.
 
-    For example, if you want to use version 3.2.1, the command would be `git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.2.1`. 
+### Clone the repository
 
-    This guide is based on the latest release.
+Clone the NGINX Ingress Controller repository and go to the _deployments_ folder. Replace `<version_number>` with the specific release you want to use.
+
+```shell
+git clone https://github.com/nginxinc/kubernetes-ingress.git --branch <version_number>
+cd kubernetes-ingress/deployments
+```
+
+For example, if you want to use version 3.2.1, the command would be `git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.2.1`. 
+
+This guide assumes you are using the latest release.
 
 ---
 
