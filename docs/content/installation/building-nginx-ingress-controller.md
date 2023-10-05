@@ -6,7 +6,7 @@ doctypes: ["installation"]
 toc: true
 ---
 
-<br>
+{{<custom-styles>}}
 
 {{<see-also>}}If you'd rather use a pre-built image, you have several options:
 
@@ -26,13 +26,9 @@ To get started, you'll need the following software installed on your machine:
 
 Although NGINX Ingress Controller is written in Golang, you don't need to have Golang installed. You can either download the precompiled binary file or build NGINX Ingress Controller in a Docker container.
 
-## Build the image and push it to a private registry {#build-image-push-to-private-repo}
+---
 
-Here's how to create the NGINX Ingress Controller binary, build the image, and upload that image to your private repository.
-
-{{<note>}}If you have a local Golang environment and would like to build the binary yourself, remove `TARGET=download` from the `make` commands. <br> If you don't have Golang but still want to build the binary, then use `TARGET=container`.{{</note>}}
-
-### Initial steps
+## Prepare the environment {#prepare-environment}
 
 We'll guide you through building NGINX Ingress Controller v3.2.1. To build a different version, simply replace `v3.2.1` with your chosen version.
 
@@ -48,6 +44,14 @@ We'll guide you through building NGINX Ingress Controller v3.2.1. To build a dif
     git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.2.1
     cd kubernetes-ingress
     ```
+
+--- 
+
+## Build the NGINX Ingress Controller image {#build-image}
+
+Here's how to create the NGINX Ingress Controller binary, build the image, and upload that image to your private repository.
+
+{{<note>}}If you have a local Golang environment and would like to build the binary yourself, remove `TARGET=download` from the `make` commands. <br> If you don't have Golang but still want to build the binary, then use `TARGET=container`.{{</note>}}
 
 ### For NGINX
 
