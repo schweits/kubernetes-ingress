@@ -2,7 +2,9 @@
 docs:
 ---
 
-When you deploy NGINX Ingress Controller as a deployment, Kubernetes automatically sets up a single NGINX Ingress Controller pod.
+For additional context on managing containers using Kubernetes Deployments, refer to the official Kubernetes [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) documentation.
+
+When you deploy NGINX Ingress Controller as a Deployment, Kubernetes automatically sets up a single NGINX Ingress Controller pod.
 
 - For NGINX, run:
 
@@ -16,4 +18,4 @@ When you deploy NGINX Ingress Controller as a deployment, Kubernetes automatical
     kubectl apply -f deployment/nginx-plus-ingress.yaml
     ```
 
-    {{<note>}}Update `nginx-plus-ingress.yaml` to include the image you've chosen from the F5 Container registry or the custom container image you've built. {{</note>}}
+    Update the `nginx-plus-ingress.yaml` file to include your chosen image from the F5 Container registry or your custom container image.

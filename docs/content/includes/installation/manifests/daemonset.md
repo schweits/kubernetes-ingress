@@ -2,11 +2,9 @@
 docs:
 ---
 
-When you deploy NGINX Ingress Controller as a DaemonSet, Kubernetes creates an Ingress Controller pod on every node in the cluster.
+For additional context on managing containers using Kubernetes DaemonSets, refer to the official Kubernetes [DaemonSets](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/) documentation.
 
-{{<note>}}
-For guidance on how to limit NGINX Ingress Controller to specific nodes rather than running NGINX Ingress Controller on every node in the cluster, refer to the Kubernetes [DaemonSet docs](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/).
-{{</note>}}
+When you deploy NGINX Ingress Controller as a DaemonSet, Kubernetes creates an Ingress Controller pod on every node in the cluster.
 
 - For NGINX, run:
 
@@ -20,4 +18,4 @@ For guidance on how to limit NGINX Ingress Controller to specific nodes rather t
     kubectl apply -f daemon-set/nginx-plus-ingress.yaml
     ```
 
-    {{<note>}}Update `nginx-plus-ingress.yaml` to include the image you've chosen from the F5 Container registry or the custom container image you've built. {{</note>}}
+    Update the `nginx-plus-ingress.yaml` file to include your chosen image from the F5 Container registry or your custom container image.

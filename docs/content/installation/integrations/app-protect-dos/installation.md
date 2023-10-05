@@ -9,17 +9,17 @@ docs: "DOCS-583"
 
 {{< custom-styles >}}
 
-> **Note**: The F5 NGINX Kubernetes Ingress Controller integration with F5 NGINX App Protect DoS requires the use of F5 NGINX Plus.
+{{< note >}} The F5 NGINX Kubernetes Ingress Controller integration with F5 NGINX App Protect DoS requires the use of F5 NGINX Plus. {{< /note >}}
 
 This document provides an overview of the steps required to use NGINX App Protect DoS with your NGINX Ingress Controller deployment. You can visit the linked documents to find additional information and instructions.
 
 ## Prerequisites
 
-1. Make sure you have access to the Ingress Controller image:
+1. Make sure you have access to the NGINX Ingress Controller image:
     - For NGINX Plus Ingress Controller, see [here]({{< relref "installation/nic-images/pulling-ingress-controller-image" >}}) for details on how to pull the image from the F5 Docker registry.
     - To pull from the F5 Container registry in your Kubernetes cluster, configure a docker registry secret using your JWT token from the MyF5 portal by following the instructions from [here]({{< relref "installation/nic-images/using-the-jwt-token-docker-secret" >}}).
     - It is also possible to build your own image and push it to your private Docker registry by following the instructions from [here]({{< relref "installation/building-nginx-ingress-controller.md" >}})).
-2. Clone the Ingress Controller repo:
+2. Clone the NGINX Ingress Controller repo:
 
     ``` shell
     git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.2.1
@@ -33,23 +33,23 @@ This document provides an overview of the steps required to use NGINX App Protec
 The App Protect DoS Arbitrator can be installed using the [NGINX App Protect DoS Helm Chart](https://github.com/nginxinc/nap-dos-arbitrator-helm-chart).
 If you have the NGINX Helm Repository already added, you can install the App Protect DoS Arbitrator by running the following command:
 
-```console
+```shell
 helm install my-release-dos nginx-stable/nginx-appprotect-dos-arbitrator
 ```
 
 ### YAML Manifests
 
-Alternatively, you can install the App Protect DoS Arbitrator using the YAML manifests provided in the Ingress Controller repo.
+Alternatively, you can install the App Protect DoS Arbitrator using the YAML manifests provided in the NGINX Ingress Controller repo.
 
-- Create the namespace and service account
+1. Create the namespace and service account:
 
-```console
-  kubectl apply -f common/ns-and-sa.yaml
-```
+    ```shell
+      kubectl apply -f common/ns-and-sa.yaml
+    ```
 
-- Deploy the app protect dos arbitrator
+2. Deploy the NGINX App Protect Arbitrator as a Deployment and service:
 
-    ```console
+    ```shell
     kubectl apply -f deployment/appprotect-dos-arb.yaml
     kubectl apply -f service/appprotect-dos-arb-svc.yaml
     ```
@@ -62,7 +62,7 @@ Take the steps below to create the Docker image that you'll use to deploy NGINX 
 
   When running the `make` command to build the image, be sure to use the `debian-image-dos-plus` target. For example:
 
-    ```console
+    ```shell
     make debian-image-dos-plus PREFIX=<your Docker registry domain>/nginx-plus-ingress
     ```
 

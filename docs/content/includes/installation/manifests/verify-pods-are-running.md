@@ -2,7 +2,7 @@
 docs:
 ---
 
-To verify the NGINX Ingress Controller pods are up and running, run:
+To confirm the NGINX Ingress Controller pods are operational, run:
 
 ```shell
 kubectl get pods --namespace=nginx-ingress

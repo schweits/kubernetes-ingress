@@ -16,14 +16,19 @@ docs:
     kubectl apply -f rbac/rbac.yaml
     ```
 
-3. (App Protect only) Create the *App Protect* role and binding:
+<br>
+
+If you're planning to use NGINX App Protect or NGINX App Protect DoS, additional roles and bindings are needed.
+
+1. (NGINX App Protect only) Create the *App Protect* role and binding:
 
     ```shell
     kubectl apply -f rbac/ap-rbac.yaml
     ```
 
-4. (App Protect DoS only) Create the *App Protect DoS* role and binding:
+2. (NGINX App Protect DoS only) Create the *App Protect DoS* role and binding:
 
     ```shell
     kubectl apply -f rbac/apdos-rbac.yaml
     ```
+
