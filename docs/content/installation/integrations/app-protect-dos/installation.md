@@ -23,39 +23,92 @@ Choose one of the following methods to get the NGINX Plus Ingress Controller ima
 - Use your NGINX Ingress Controller subscription JWT token to get the image: Instructions are in [Getting the NGINX Ingress Controller Image with JWT]({{< relref "installation/nic-images/using-the-jwt-token-docker-secret.md" >}}).
 - Build your own image: To build your own image, follow the [Building NGINX Ingress Controller]({{< relref "installation/building-nginx-ingress-controller.md" >}}) guide.
 
-### Clone the repository
+---
 
-Clone the NGINX Ingress Controller repository and go to the _deployments_ folder. Replace `<version_number>` with the specific release you want to use.
+## Prepare the environment {#prepare-environment}
 
-```shell
-git clone https://github.com/nginxinc/kubernetes-ingress.git --branch <version_number>
-cd kubernetes-ingress/deployments
-```
+Get your system ready for building and pushing the NGINX Ingress Controller image with NGINX App Protect DoS.
 
-For example, if you want to use version 3.2.1, the command would be `git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.2.1`. 
+1. Sign in to your private registry. Replace `<my-docker-registry>` with the path to your own private registry.
 
-This guide assumes you are using the latest release.
+    ```shell
+    docker login <my-docker-registry>
+    ```
+
+2. Clone the NGINX Ingress Controller GitHub repository. Replace `<version_number>` with the version of NGINX Ingress Controller you want.
+
+    ```shell
+    git clone https://github.com/nginxinc/kubernetes-ingress.git --branch <version_number>
+    cd kubernetes-ingress
+    ```
+
+    For instance if you want to clone version v3.2.1, the commands to run would be:
+
+    ```shell
+    git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.2.1
+    cd kubernetes-ingress/deployments
+    ```
 
 ---
 
+## Build the image {#build-docker-image}
 
-## Build the Docker Image {#build-docker-image}
+Follow these steps to build the NGINX Controller Image with NGINX App Protect DoS.
 
-Take the steps below to create the Docker image that you'll use to deploy NGINX Ingress Controller with App Protect DoS in Kubernetes.
-
-- [Build the NGINX Ingress Controller image]({{< relref "installation/building-nginx-ingress-controller.md" >}}).
-
-  When running the `make` command to build the image, be sure to use the `debian-image-dos-plus` target. For example:
+1. Place your NGINX Plus license files (_nginx-repo.crt_ and _nginx-repo.key_) in the project's root folder. To verify they're in place, run:
 
     ```shell
-    make debian-image-dos-plus PREFIX=<your Docker registry domain>/nginx-plus-ingress
+    ls nginx-repo.*
     ```
 
-    Alternatively, if you want to run on an [OpenShift](https://www.openshift.com/) cluster, use the `ubi-image-dos-plus` target.
+    You should see:
 
-    If you want to include the App Protect WAF module in the image, you can use the `debian-image-nap-dos-plus` target or the `ubi-image-nap-dos-plus` target for OpenShift.
+    ```shell
+    nginx-repo.crt  nginx-repo.key
+    ```
 
-- [Push the image to your local Docker registry]({{< relref "installation/building-nginx-ingress-controller.md#build-image-push-to-private-repo " >}}).
+2. Build the image. Replace `<makefile target>` with your chosen build option and `<my-docker-registry>` with your private registry's path. Refer to the [Makefile targets](#makefile-targets) table below for the list of build options.
+
+    ```shell
+    make <makefile target> PREFIX=<my-docker-registry>/nginx-plus-ingress TARGET=download
+    ```
+
+    For example, to build a Debian-based image with NGINX Plus and NGINX App Protect DoS, run:
+
+    ```shell
+    make debian-image-dos-plus PREFIX=<my-docker-registry>/nginx-plus-ingress TARGET=download
+    ```
+
+     **What to expect**: The image is built and tagged with a version number, which is derived from the `VERSION` variable in the [_Makefile_]({{< relref "installation/building-nginx-ingress-controller.md#makefile-details" >}}). This version number is used for tracking and deployment purposes.
+
+{{<note>}}In the event a patch version of NGINX Plus is released, make sure to rebuild your image to get the latest version. If your system is caching the Docker layers and not updating the packages, add `DOCKER_BUILD_OPTIONS="--pull --no-cache"` to the make command.{{</note>}}
+
+### Makefile targets {#makefile-targets}
+
+{{<bootstrap-table "table table-striped table-bordered">}}
+| Makefile Target           | Description                                                       | Compatible Systems  |
+|---------------------------|-------------------------------------------------------------------|---------------------|
+| **debian-image-dos-plus** | Builds a Debian-based image with NGINX Plus and the [NGINX App Protect DoS](/nginx-app-protect-dos/) module. | Debian  |
+| **debian-image-nap-dos-plus** | Builds a Debian-based image with NGINX Plus, [NGINX App Protect DoS](/nginx-app-protect-dos/), and [NGINX App Protect WAF](/nginx-app-protect/). | Debian  |
+| **ubi-image-dos-plus**    | Builds a UBI-based image with NGINX Plus and the [NGINX App Protect DoS](/nginx-app-protect-dos/) module. | OpenShift |
+| **ubi-image-nap-dos-plus** | Builds a UBI-based image with NGINX Plus, [NGINX App Protect DoS](/nginx-app-protect-dos/), and [NGINX App Protect WAF](/nginx-app-protect/). | OpenShift |
+{{</bootstrap-table>}}
+
+<br>
+
+{{<see-also>}}For the complete list of _Makefile_ targets and customizable variables, see the [Building NGINX Ingress Controller]({{< relref "installation/building-nginx-ingress-controller.md#makefile-details" >}}) guide{{</see-also>}}
+
+---
+
+## Push the image to your private registry
+
+Once you've successfully built the NGINX Ingress Controller image with NGINX App Protect DoS, the next step is to upload it to your private Docker registry. This makes the image available for deployment to your Kubernetes cluster.
+
+To upload the image, run the following command. If you're using a custom tag, add `TAG=your-tag` to the end of the command. Replace `<my-docker-registry>` with your private registry's path.
+
+```shell
+make push PREFIX=<my-docker-registry>/nginx-plus-ingress
+```
 
 ---
 

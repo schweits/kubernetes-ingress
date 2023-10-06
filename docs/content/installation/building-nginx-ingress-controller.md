@@ -87,7 +87,7 @@ After setting up your environment, follow these steps to build the NGINX Ingress
     ```shell
     nginx-repo.crt  nginx-repo.key
     ```
- 
+
 2. Build the image. Replace `<my-docker-registry>` with your private registry's path.
 
     ```shell
