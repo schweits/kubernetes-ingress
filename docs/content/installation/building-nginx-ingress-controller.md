@@ -8,7 +8,9 @@ toc: true
 
 {{<custom-styles>}}
 
-## Prerequisites
+{{<call-out "tip" "Pre-built image alternatives" >}}If you'd rather not build your own NGINX Ingress Controller image, check out the [pre-built image options](#pre-built-images) at the end of this guide.{{</call-out>}}
+
+## Before you start
 
 To get started, you need the following software installed on your machine:
 
@@ -24,7 +26,7 @@ Although NGINX Ingress Controller is written in Golang, you don't need to have G
 
 ## Prepare the environment {#prepare-environment}
 
-This section helps you get your system ready so you can build and push the NGINX Ingress Controller image.
+Get your system ready for building and pushing the NGINX Ingress Controller image.
 
 1. Sign in to your private registry. Replace `<my-docker-registry>` with the path to your own private registry.
 
@@ -50,7 +52,7 @@ This section helps you get your system ready so you can build and push the NGINX
 
 ## Build the NGINX Ingress Controller image {#build-image}
 
-Now that your environment is set up, this section will show you how to build the NGINX Ingress Controller image for either NGINX or NGINX Plus.
+After setting up your environment, follow these steps to build the NGINX Ingress Controller image.
 
 {{<note>}}If you have a local Golang environment and want to build the binary yourself, remove `TARGET=download` from the make commands. If you don't have Golang but still want to build the binary, use `TARGET=container`.{{</note>}}
 
@@ -102,7 +104,7 @@ Now that your environment is set up, this section will show you how to build the
 
 ## Push the image to your private registry {#push-image}
 
-After building the NGINX Ingress Controller image, this section provides instructions for uploading the image to your own private registry.
+Once you've successfully built the NGINX or NGINX Plus Ingress Controller image, the next step is to upload it to your private Docker registry. This makes the image available for deployment to your Kubernetes cluster.
 
 ### For NGINX
 
@@ -122,15 +124,11 @@ After building the NGINX Ingress Controller image, this section provides instruc
 
 ---
 
-Certainly, let's incorporate those changes to make the section more consistent, readable, and easier to maintain.
-
----
-
 ## Makefile details {#makefile-details}
 
 This section provides comprehensive information on the targets and variables available in the _Makefile_. These targets and variables allow you to customize how you build, tag, and push your NGINX or NGINX Plus images.
 
-### Key Makefile targets
+### Key Makefile targets {key-makefile-targets}
 
 {{<tip>}}To view available _Makefile_ targets, run `make` with no target or type `make help`.{{</tip>}}
 
@@ -155,7 +153,9 @@ Key targets include:
 | **ubi-image-nap-dos-plus**      | <p>Builds a UBI-based image with NGINX Plus, [NGINX App Protect WAF](/nginx-app-protect/) and the [NGINX App Protect DoS](/nginx-app-protect-dos/) module for [OpenShift](https://www.openshift.com/) clusters.</p> <p> **Important**: Save your RHEL organization and activation keys in a file named _rhel_license_ at the project root.</p> <p> For instance:</p> <pre>RHEL_ORGANIZATION=1111111<br />RHEL_ACTIVATION_KEY=your-key</pre>|
 {{</bootstrap-table>}}
 
-### Additional useful targets
+### Additional useful targets {#other-makefile-targets}
+
+A few other useful targets:
 
 {{<bootstrap-table "table table-striped table-bordered">}}
 | <div style="width:200px">Target</div> | Description   |
@@ -179,3 +179,16 @@ The _Makefile_ includes several key variables. You have the option to either mod
 | **DOCKER_BUILD_OPTIONS**                | Allows for additional [options](https://docs.docker.com/engine/reference/commandline/build/#options) during the `docker build` process, like `--pull`.  |
 | **TARGET**                              | <p>Determines the build environment. NGINX Ingress Controller compiles locally in a Golang environment by default. Ensure the NGINX Ingress Controller repo resides in your `$GOPATH` if you select this option.</p><p>Alternatively, you can set `TARGET=container` to build using a Docker [Golang](https://hub.docker.com/_/golang/) container. To skip compiling the binary if you're on a specific tag or the latest `main` branch commit, set `TARGET=download`.</p>  |
 {{</bootstrap-table>}}
+
+---
+
+## Alternatives to building your own image {#pre-built-images}
+
+If you prefer not to build your own NGINX Ingress Controller image, you can use pre-built images. Here are your options:
+
+**NGINX Ingress Controller**: Download the image `nginx/nginx-ingress` from [DockerHub](https://hub.docker.com/r/nginx/nginx-ingress) or [GitHub](https://github.com/nginxinc/kubernetes-ingress/pkgs/container/kubernetes-ingress).
+
+**NGINX Plus Ingress Controller**: You have two options for this, both requiring an NGINX Ingress Controller subscription.
+
+- Download the image using your NGINX Ingress Controller subscription certificate and key. See the [Getting the F5 Registry NGINX Ingress Controller Image]({{< relref "installation/nic-images/pulling-ingress-controller-image.md" >}}) guide.
+- Use your NGINX Ingress Controller subscription JWT token to get the image: Instructions are in [Getting the NGINX Ingress Controller Image with JWT]({{< relref "installation/nic-images/using-the-jwt-token-docker-secret.md" >}}).
