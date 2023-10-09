@@ -1,7 +1,7 @@
 ---
-title: Intro
+title: Overview
 description:
-weight: 1200
+weight: 100
 menu:
   docs:
     parent: NGINX Ingress Controller

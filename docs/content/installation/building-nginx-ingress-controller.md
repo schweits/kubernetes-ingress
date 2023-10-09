@@ -48,7 +48,7 @@ Get your system ready for building and pushing the NGINX Ingress Controller imag
     cd kubernetes-ingress
     ```
 
---- 
+---
 
 ## Build the NGINX Ingress Controller image {#build-image}
 
