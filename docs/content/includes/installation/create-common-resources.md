@@ -26,4 +26,4 @@ In this section, you'll create resources that most NGINX Ingress Controller inst
     kubectl apply -f common/ingress-class.yaml
     ```
 
-    If you want to make this NGINX Ingress Controller instance your cluster's default, remove the comment from the `ingressclass.kubernetes.io/is-default-class` annotation. This action will auto-assign the `IngressClass` to new new ingresses that don't specify an `ingressClassName`.
+    If you want to make this NGINX Ingress Controller instance your cluster's default, uncomment the `ingressclass.kubernetes.io/is-default-class` annotation. This action will auto-assign `IngressClass` to new ingresses that don't specify an `ingressClassName`.
