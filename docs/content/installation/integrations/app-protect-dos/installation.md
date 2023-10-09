@@ -1,6 +1,6 @@
 ---
-title: Installation with NGINX App Protect DoS
-description: "This document explains the steps to take to use NGINX App Protect DoS with NGINX Ingress Controller."
+title: Building NGINX Ingress Controller with NGINX App Protect DoS
+description: "This document explains how to build an image for NGINX Ingress Controller with the NGINX App Protect DoS from source code."
 weight: 100
 doctypes: [""]
 toc: true
@@ -9,19 +9,11 @@ docs: "DOCS-583"
 
 {{< custom-styles >}}
 
+{{<call-out "tip" "Pre-built image alternatives" >}}If you'd rather not build your own NGINX Ingress Controller image, see the [pre-built image options](#pre-built-images) at the end of this guide.{{</call-out>}}
+
 ## Before you start
 
-{{< note >}} To use NGINX App Protect DoS with NGINX Ingress Controller, you must have NGINX Plus. {{< /note >}}
-
-### Get the NGINX Plus Controller Image
-
-{{<note>}}Always use the most up-to-date stable release listed on the [releases page]({{< relref "releases.md" >}}).{{</note>}}
-
-Choose one of the following methods to get the NGINX Plus Ingress Controller image:
-
-- Download the image using your NGINX Ingress Controller subscription certificate and key. See the [Getting the F5 Registry NGINX Ingress Controller Image]({{< relref "installation/nic-images/pulling-ingress-controller-image.md" >}}) guide.
-- Use your NGINX Ingress Controller subscription JWT token to get the image: Instructions are in [Getting the NGINX Ingress Controller Image with JWT]({{< relref "installation/nic-images/using-the-jwt-token-docker-secret.md" >}}).
-- Build your own image: To build your own image, follow the [Building NGINX Ingress Controller]({{< relref "installation/building-nginx-ingress-controller.md" >}}) guide.
+- To use NGINX App Protect DoS with NGINX Ingress Controller, you must have NGINX Plus.
 
 ---
 
@@ -177,7 +169,7 @@ Alternatively, you can install the App Protect DoS Arbitrator using the YAML man
 
 To enable the NGINX App Protect DoS Module:
 
-1. Add the `enable-app-protect-dos` [command-line argument]({{< relref "configuration/global-configuration/command-line-arguments.md#cmdoption-enable-app-protect-dos" >}}) to your Deployment or DaemonSet file.
+- Add the `enable-app-protect-dos` [command-line argument]({{< relref "configuration/global-configuration/command-line-arguments.md#cmdoption-enable-app-protect-dos" >}}) to your Deployment or DaemonSet file.
 
 ---
 
@@ -185,5 +177,13 @@ To enable the NGINX App Protect DoS Module:
 
 {{< include "installation/manifests/verify-pods-are-running.md" >}}
 
-
 For more information, see the [Configuration guide]({{< relref "installation/integrations/app-protect-dos/configuration.md" >}}),the [NGINX Ingress Controller with App Protect DoS example for VirtualServer](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/custom-resources/app-protect-dos) and the [NGINX Ingress Controller with App Protect DoS example for Ingress](https://github.com/nginxinc/kubernetes-ingress/tree/v3.2.1/examples/ingress-resources/app-protect-dos).
+
+---
+
+## Alternatives to building your own image {#pre-built-images}
+
+If you prefer not to build your own NGINX Ingress Controller image, you can use pre-built images. Here are your options:
+
+- Download the image using your NGINX Ingress Controller subscription certificate and key. See the [Getting the F5 Registry NGINX Ingress Controller Image]({{< relref "installation/nic-images/pulling-ingress-controller-image.md" >}}) guide.
+- Use your NGINX Ingress Controller subscription JWT token to get the image: Instructions are in [Getting the NGINX Ingress Controller Image with JWT]({{< relref "installation/nic-images/using-the-jwt-token-docker-secret.md" >}}).

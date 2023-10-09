@@ -8,7 +8,7 @@ toc: true
 
 {{<custom-styles>}}
 
-{{<call-out "tip" "Pre-built image alternatives" >}}If you'd rather not build your own NGINX Ingress Controller image, check out the [pre-built image options](#pre-built-images) at the end of this guide.{{</call-out>}}
+{{<call-out "tip" "Pre-built image alternatives" >}}If you'd rather not build your own NGINX Ingress Controller image, see the [pre-built image options](#pre-built-images) at the end of this guide.{{</call-out>}}
 
 ## Before you start
 
