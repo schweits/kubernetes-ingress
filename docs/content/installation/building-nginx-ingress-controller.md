@@ -128,7 +128,7 @@ Once you've successfully built the NGINX or NGINX Plus Ingress Controller image,
 
 This section provides comprehensive information on the targets and variables available in the _Makefile_. These targets and variables allow you to customize how you build, tag, and push your NGINX or NGINX Plus images.
 
-### Key Makefile targets {key-makefile-targets}
+### Key Makefile targets {#key-makefile-targets}
 
 {{<tip>}}To view available _Makefile_ targets, run `make` with no target or type `make help`.{{</tip>}}
 
