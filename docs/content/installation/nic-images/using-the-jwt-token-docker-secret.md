@@ -6,6 +6,8 @@ doctypes: [""]
 toc: true
 ---
 
+{{<custom-styles>}}
+
 ## Overview
 
 This document explains how to pull the NGINX Plus Ingress Controller image from the F5 Docker registry into your Kubernetes cluster using your JWT token.
@@ -23,12 +25,16 @@ You can also get the image using alternative methods:
 
 If you would like an NGINX Ingress Controller image using NGINX open source, we provide the image through [DockerHub](https://hub.docker.com/r/nginx/nginx-ingress/).
 
+---
+
 ## Before You Begin
 
 You will need the following information from [MyF5](https://my.f5.com) for these steps:
 
 * A JWT Access Token (Per instance) for NGINX Ingress Controller from an active NGINX Ingress Controller subscription.
 * The certificate (`nginx-repo.crt`) and key (`nginx-repo.key`) for each NGINX Ingress Controller instance, used to list the available image tags from the Docker registry API.
+
+---
 
 ## Prepare NGINX Ingress Controller
 
@@ -39,25 +45,26 @@ You will need the following information from [MyF5](https://my.f5.com) for these
 1. Modify your deployment (manifest or helm) to use the Kubernetes secret created in step three.
 1. Deploy NGINX Ingress Controller into your Kubernetes cluster and verify successful installation.
 
+---
 ## Using the JWT token in a Docker Config Secret
 
 1. Create a Kubernetes `docker-registry` secret type on the cluster, using the JWT token as the username and `none` for password (Password is unused).  The name of the docker server is `private-registry.nginx.com`.
 
-
-	```shell
+    ```shell
     kubectl create secret docker-registry regcred --docker-server=private-registry.nginx.com --docker-username=<JWT Token> --docker-password=none [-n nginx-ingress]
     ```
-   It is important that the `--docker-username=<JWT Token>` contains the contents of the token and is not pointing to the token itself. Ensure that when you copy the contents of the JWT token, there are no additional characters or extra whitespaces. This can invalidate the token and cause 401 errors when trying to authenticate to the registry.
 
+    It is important that the `--docker-username=<JWT Token>` contains the contents of the token and is not pointing to the token itself. Ensure that when you copy the contents of the JWT token, there are no additional characters or extra whitespaces. This can invalidate the token and cause 401 errors when trying to authenticate to the registry.
 
 1. Confirm the details of the created secret by running:
 
-	```shell
+    ```shell
     kubectl get secret regcred --output=yaml
     ```
 
-
 1. You can now use the newly created Kubernetes secret in `helm` and `manifest` deployments.
+
+---
 
 ## Manifest Deployment
 
@@ -79,6 +86,8 @@ spec:
 ```
 
 The `imagePullSecrets` and `containers.image` lines represent the Kubernetes secret, as well as the registry and version of the NGINX Ingress Controller we are going to deploy.
+
+---
 
 ## Helm Deployment
 
@@ -179,6 +188,8 @@ You can also use the certificate and key from the MyF5 portal and the Docker reg
     ]
     }
 ```
+
+---
 
 ## Pulling an Image for Local Use
 
