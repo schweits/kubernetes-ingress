@@ -17,7 +17,7 @@ authors: ["Jason Williams"]
 
 ## Overview
 
-This page explains two different ways to migrate from the community-maintained [Ingress-NGINX Controller](https://github.com/kubernetes/ingress-nginx) project to the NGINX Ingress Controller: using NGINX's Ingress Resources or with Kubernetes's built-in Ingress Resources. This is typically because of implementation differences, and to take advantage of features such as [NGINX Plus integration]({{<relref "overview/nginx-plus">}}). 
+This page explains two different ways to migrate from the community-maintained [Ingress-NGINX Controller](https://github.com/kubernetes/ingress-nginx) project to the NGINX Ingress Controller: using NGINX's Ingress Resources or with Kubernetes's built-in Ingress Resources. This is typically because of implementation differences, and to take advantage of features such as [NGINX Plus integration]({{<relref "overview/nginx-plus">}}).
 
 <!-- To understand the differences, you may wish to read [Which Ingress Controller Do I Need?]({{<relref "overview/controller-comparison">}}). -->
 
@@ -59,7 +59,7 @@ spec:
       http:
         paths:
         - path: /login
-          backend: 
+          backend:
             serviceName: login-svc
             servicePort: 80
         - path: /billing
@@ -74,22 +74,22 @@ kind: VirtualServer
 metadata:
   name: nginx-test
 spec:
-  host: foo.bar.com 
+  host: foo.bar.com
   tls:
     secret: tls-secret
   upstreams:
     - name: login
       service: login-svc
       port: 80
-    - name: billing 
+    - name: billing
       service: billing-svc
       port: 80
-  routes: 
+  routes:
   - path: /login
     action:
-      pass: login 
-  - path: /billing 
-    action: 
+      pass: login
+  - path: /billing
+    action:
       pass: billing
 ```
 
@@ -129,7 +129,7 @@ matches:
   - header: httpHeader
       value: never
   action:
-    pass: echo 
+    pass: echo
   - header: httpHeader
       value: always
   action:
@@ -154,7 +154,7 @@ matches:
   - header: httpHeader
       value: my-value
   action:
-    pass: echo-canary 
+    pass: echo-canary
 action:
   pass: echo
 ```
@@ -174,7 +174,7 @@ matches:
   - cookie: cookieName
       value: never
   action:
-    pass: echo 
+    pass: echo
   - cookie: cookieName
       value: always
   action:
@@ -319,7 +319,7 @@ These code blocks show how the Ingress-NGINX annotations correspond to NGINX Ing
 nginx.ingress.kubernetes.io/enable-cors: "true"
 nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
 
-nginx.ingress.kubernetes.io/cors-allow-headers: "X-Forwarded-For" 
+nginx.ingress.kubernetes.io/cors-allow-headers: "X-Forwarded-For"
 
 nginx.ingress.kubernetes.io/cors-allow-methods: "PUT, GET, POST, OPTIONS"
 
@@ -331,9 +331,9 @@ nginx.ingress.kubernetes.io/cors-max-age: "seconds"
 **NGINX Ingress Controller**
 ```yaml
 responseHeaders:
-  add: 
+  add:
     - name: Access-Control-Allow-Credentials
-      value: "true" 
+      value: "true"
     - name: Access-Control-Allow-Headers
       value: "X-Forwarded-For"
     - name: Access-Control-Allow-Methods
@@ -461,7 +461,7 @@ This table maps the Ingress-NGINX Controller annotations to NGINX Ingress Contro
 
 {{< bootstrap-table "table table-bordered table-striped table-responsive" >}}
 | Ingress-NGINX Controller | NGINX Ingress Controller | NGINX Directive |
-| ------------------------ | ------------------------ | --------------- | 
+| ------------------------ | ------------------------ | --------------- |
 | [`nginx.ingress.kubernetes.io/configuration-snippet`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#configuration-snippet) | [`nginx.org/location-snippets`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#snippets-and-custom-templates) | N/A |
 | [`nginx.ingress.kubernetes.io/load-balance`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-nginx-load-balancing) (1) |  [`nginx.org/lb-method`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#backend-services-upstreams) | [`random two least_conn`](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#random) |
 | [`nginx.ingress.kubernetes.io/proxy-buffering`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#proxy-buffering) | [`nginx.org/proxy-buffering`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [`proxy_buffering`](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering) |

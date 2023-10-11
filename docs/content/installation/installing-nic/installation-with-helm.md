@@ -240,7 +240,7 @@ The steps you should follow depend on the Helm release name:
     ```shell
     kubectl describe deployment/daemonset -n <namespace>
     ```
-    
+
     Copy the key=value under ```Selector```, such as:
 
     ```shell
@@ -263,7 +263,7 @@ The steps you should follow depend on the Helm release name:
     --set serviceNameOverride="<helm_release_name>-nginx-ingress"
     --set controller.name=""
     ```
-    
+
     It could look as follows:
 
     ```shell
