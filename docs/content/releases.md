@@ -1,7 +1,7 @@
 ---
 title: Releases
 description: "NGINX Ingress Controller Release Notes."
-weight: 2100
+weight: 300
 doctypes: ["concept"]
 toc: true
 docs: "DOCS-616"

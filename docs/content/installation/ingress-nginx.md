@@ -2,7 +2,7 @@
 title: "Migrating from Ingress-NGINX Controller to NGINX Ingress Controller"
 date: 2023-09-29T16:31:21+01:00
 description: "This document describes how to migrate from the community-maintained Ingress-NGINX Controller to the F5 NGINX Ingress Controller."
-weight: 100
+weight: 500
 toc: true
 tags: [ "docs" ]
 docs: "DOCS-000"
