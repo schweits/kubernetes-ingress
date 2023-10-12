@@ -1,6 +1,6 @@
 ---
 title: Which Ingress Controller Do I Need?
-description: This document describes the key differences between the community Ingress-NGINX Controller and the F5 NGINX Ingress Controller.
+description: This document describes the key differences between the community Ingress-NGINX Controller and F5 NGINX Ingress Controller.
 weight: 400
 doctypes: ["concept"]
 toc: true
