@@ -113,9 +113,9 @@ Canary and blue-green deployments allow you to push code changes to production e
 
 The Ingress-NGINX Controller evaluates canary annotations in the following order:
 
-1. `nginx.ingress.kubernetes.io/canary-by-header`
-1. `nginx.ingress.kubernetes.io/canary-by-cookie`
-1. `nginx.ingress.kubernetes.io/canary-by-weight`
+1. _nginx.ingress.kubernetes.io/canary-by-header_
+1. _nginx.ingress.kubernetes.io/canary-by-cookie_
+1. _nginx.ingress.kubernetes.io/canary-by-weight_
 
 For NGINX Ingress Controller to evalute them the same way, they must appear in the same order in the VirtualServer or VirtualServerRoute Manifest.
 
@@ -305,10 +305,10 @@ rewritePath: "URI"
 
 There are four Ingress-NGINX Controller annotations without NGINX Ingress resource fields yet: they must be handled using snippets.
 
-- `nginx.ingress.kubernetes.io/limit-connections`
-- `nginx.ingress.kubernetes.io/limit-rate`
-- `nginx.ingress.kubernetes.io/limit-rate-after`
-- `nginx.ingress.kubernetes.io/limit-whitelist`
+- _nginx.ingress.kubernetes.io/limit-connections_
+- _nginx.ingress.kubernetes.io/limit-rate_
+- _nginx.ingress.kubernetes.io/limit-rate-after_
+- _nginx.ingress.kubernetes.io/limit-whitelist_
 
 ---
 
@@ -357,16 +357,16 @@ This table shows how Ingress-NGINX Controller annotations map to statements in t
 {{< bootstrap-table "table table-bordered table-striped table-responsive" >}}
 | Ingress-NGINX Controller | NGINX Ingress Controller |
 | ------------------------ | ------------------------ |
-| nginx.ingress.kubernetes.io/load-balance | lb-method |
-| nginx.ingress.kubernetes.io/proxy-buffering | buffering |
-| nginx.ingress.kubernetes.io/proxy-buffers-number | buffers |
-| nginx.ingress.kubernetes.io/proxy-buffer-size| buffers |
-| nginx.ingress.kubernetes.io/proxy-connect-timeout | connect-timeout |
-| nginx.ingress.kubernetes.io/proxy-next-upstream | next-upstream |
-| nginx.ingress.kubernetes.io/proxy-next-upstream-timeout | next-upstream-timeout |
-| nginx.ingress.kubernetes.io/proxy-read-timeout | read-timeout |
-| nginx.ingress.kubernetes.io/proxy-send-timeout | send-timeout |
-| nginx.ingress.kubernetes.io/service-upstream | use-cluster-ip |
+| _nginx.ingress.kubernetes.io/load-balance_ | _lb-method_ |
+| _nginx.ingress.kubernetes.io/proxy-buffering_ | _buffering_ |
+| _nginx.ingress.kubernetes.io/proxy-buffers-number_ | _buffers_ |
+| _nginx.ingress.kubernetes.io/proxy-buffer-size_ | _buffers_ |
+| _nginx.ingress.kubernetes.io/proxy-connect-timeout_ | _connect-timeout_ |
+| _nginx.ingress.kubernetes.io/proxy-next-upstream_ | _next-upstream_ |
+| _nginx.ingress.kubernetes.io/proxy-next-upstream-timeout_ | _next-upstream-timeout_ |
+| _nginx.ingress.kubernetes.io/proxy-read-timeout_ | _read-timeout_ |
+| _nginx.ingress.kubernetes.io/proxy-send-timeout_ | _send-timeout_ |
+| _nginx.ingress.kubernetes.io/service-upstream_ | _use-cluster-ip_ |
 {{% /bootstrap-table %}}
 
 #### mTLS authentication
@@ -456,7 +456,7 @@ The other option for migrating from the community Ingress-NGINX Controller to NG
 This ensures that all configuration is kept in the Ingress object.
 
 {{< warning >}}
-Do not alter the `spec` field of the Ingress resource when taking this option.
+You should avoid altering the `spec` field of the Ingress resource when taking this option. Ingress-NGINX Controller and NGINX Ingress Controller differ slightly in their implementations: changing the Kubernetes Ingress can create incompatibility issues.
 {{< /warning >}}
 
 ### Advanced configuration with annotations
@@ -465,17 +465,17 @@ This table maps the Ingress-NGINX Controller annotations to NGINX Ingress Contro
 {{< bootstrap-table "table table-bordered table-striped table-responsive" >}}
 | Ingress-NGINX Controller | NGINX Ingress Controller | NGINX Directive |
 | ------------------------ | ------------------------ | --------------- |
-| [`nginx.ingress.kubernetes.io/configuration-snippet`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#configuration-snippet) | [`nginx.org/location-snippets`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#snippets-and-custom-templates) | N/A |
-| [`nginx.ingress.kubernetes.io/load-balance`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-nginx-load-balancing) (1) |  [`nginx.org/lb-method`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#backend-services-upstreams) | [`random two least_conn`](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#random) |
-| [`nginx.ingress.kubernetes.io/proxy-buffering`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#proxy-buffering) | [`nginx.org/proxy-buffering`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [`proxy_buffering`](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering) |
-| [`nginx.ingress.kubernetes.io/proxy-buffers-number`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#proxy-buffers-number) | [`nginx.org/proxy-buffers`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [`proxy_buffers`](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffers) |
-| [`nginx.ingress.kubernetes.io/proxy-buffer-size`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#proxy-buffer-size) | [`nginx.org/proxy-buffer-size`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [`proxy_buffer_size`](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffer_size) |
-| [`nginx.ingress.kubernetes.io/proxy-connect-timeout`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-timeouts) | [`nginx.org/proxy-connect-timeout`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [`proxy_connect_timeout`](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_connect_timeout) |
-| [`nginx.ingress.kubernetes.io/proxy-read-timeout`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-timeouts) | [`nginx.org/proxy-read-timeout`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [`proxy_read_timeout`](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_read_timeout) |
-| [`nginx.ingress.kubernetes.io/proxy-send-timeout`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-timeouts) | [`nginx.org/proxy-send-timeout`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [`proxy_send_timeout`](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_send_timeout) |
-| [`nginx.ingress.kubernetes.io/rewrite-target`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#rewrite) | [`nginx.org/rewrites`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#request-uriheader-manipulation) | [`rewrite`](https://nginx.org/en/docs/http/ngx_http_rewrite_module.html#rewrite) |
-| [`nginx.ingress.kubernetes.io/server-snippet`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#server-snippet)| [`nginx.org/server-snippets`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#snippets-and-custom-templates) | N/A |
-| [`nginx.ingress.kubernetes.io/ssl-redirect`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#server-side-https-enforcement-through-redirect) | [`ingress.kubernetes.io/ssl-redirect`](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#auth-and-ssltls) | N/A (2) |
+| [_nginx.ingress.kubernetes.io/configuration-snippet_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#configuration-snippet) | [_nginx.org/location-snippets_](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#snippets-and-custom-templates) | N/A |
+| [_nginx.ingress.kubernetes.io/load-balance_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-nginx-load-balancing) (1) |  [_nginx.org/lb-method_](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#backend-services-upstreams) | [_random two least_conn_](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#random) |
+| [_nginx.ingress.kubernetes.io/proxy-buffering_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#proxy-buffering) | [_nginx.org/proxy-buffering_](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [_proxy_buffering_](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering) |
+| [_nginx.ingress.kubernetes.io/proxy-buffers-number_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#proxy-buffers-number) | [_nginx.org/proxy-buffers_](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [_proxy_buffers_](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffers) |
+| [_nginx.ingress.kubernetes.io/proxy-buffer-size_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#proxy-buffer-size) | [_nginx.org/proxy-buffer-size_](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [_proxy_buffer_size_](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffer_size) |
+| [_nginx.ingress.kubernetes.io/proxy-connect-timeout_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-timeouts) | [_nginx.org/proxy-connect-timeout_](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [_proxy_connect_timeout_](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_connect_timeout) |
+| [_nginx.ingress.kubernetes.io/proxy-read-timeout_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-timeouts) | [_nginx.org/proxy-read-timeout_](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [_proxy_read_timeout_](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_read_timeout) |
+| [_nginx.ingress.kubernetes.io/proxy-send-timeout_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-timeouts) | [_nginx.org/proxy-send-timeout_](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#general-customization) | [_proxy_send_timeout_](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_send_timeout) |
+| [_nginx.ingress.kubernetes.io/rewrite-target_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#rewrite) | [_nginx.org/rewrites_](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#request-uriheader-manipulation) | [_rewrite_](https://nginx.org/en/docs/http/ngx_http_rewrite_module.html#rewrite) |
+| [_nginx.ingress.kubernetes.io/server-snippet_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#server-snippet)| [_nginx.org/server-snippets_](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#snippets-and-custom-templates) | N/A |
+| [_nginx.ingress.kubernetes.io/ssl-redirect_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#server-side-https-enforcement-through-redirect) | [_ingress.kubernetes.io/ssl-redirect_](https://docs.nginx.com/nginx-ingress-controller/configuration/ingress-resources/advanced-configuration-with-annotations/#auth-and-ssltls) | N/A (2) |
 {{% /bootstrap-table %}}
 
 1. Ingress-NGINX Controller implements some of its load balancing algorithms with Lua, which may not have an equivalent in NGINX Ingress Controller.
@@ -511,42 +511,42 @@ Some of the key names are identical, and each Ingress Controller has ConfigMap k
 {{< bootstrap-table "table table-bordered table-striped table-responsive" >}}
 | Ingress-NGINX Controller | NGINX Ingress Controller |
 | ------------------------ | ------------------------ |
-| [`disable-access-log`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#disable-access-log) | [`access-log-off`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#logging) |
-| [`error-log-level`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#error-log-level) | [`error-log-level`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#logging) |
-| [`hsts`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#hsts) | [`hsts`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls) |
-| [`hsts-include-subdomains`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#hsts-include-subdomains) | [`hsts-include-subdomains`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls)       |
-| [`hsts-max-age`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#hsts-max-age) | [`hsts-max-age`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls) |
-| [`http-snippet`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#http-snippet) | [`http-snippets`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#snippets-and-custom-templates) |
-| [`keep-alive`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#keep-alive) | [`keepalive-timeout`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`keep-alive-requests`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#keep-alive-requests) | [`keepalive-requests`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`load-balance`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#load-balance) | [`lb-method`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#backend-services-upstreams) |
-| [`location-snippet`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#location-snippet) | [`location-snippets`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#snippets-and-custom-templates) |
-| [`log-format-escape-json`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#log-format-escape-json) | [`log-format-escaping: "json"`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#logging) |
-| [`log-format-stream`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#log-format-stream) | [`stream-log-format`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#logging) |
-| [`log-format-upstream`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#log-format-upstream) | [`log-format`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#logging) |
-| [`main-snippet`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#main-snippet) | [`main-snippets`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#snippets-and-custom-templates) |
-| [`max-worker-connections`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#max-worker-connections) | [`worker-connections`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`max-worker-open-files`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#max-worker-open-files) | [`worker-rlimit-nofile`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`proxy-body-size`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-body-size) | [`client-max-body-size`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`proxy-buffering`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-buffering) | [`proxy-buffering`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`proxy-buffers-number`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-buffers-number) | [`proxy-buffers: number size`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`proxy-buffer-size`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-buffer-size) | [`proxy-buffers: number size`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`proxy-connect-timeout`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-connect-timeout) | [`proxy-connect-timeout`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`proxy-read-timeout`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-read-timeout) | [`proxy-read-timeout`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`proxy-send-timeout`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-send-timeout) | [`proxy-send-timeout`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`server-name-hash-bucket-size`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#server-name-hash-bucket-size) | [`server-names-hash-bucket-size`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`proxy-headers-hash-max-size`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-headers-hash-max-size) | [`server-names-hash-max-size`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`server-snippet`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#server-snippet) | [`server-snippets`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#snippets-and-custom-templates) |
-| [`server-tokens `](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#server-tokens) | [`server-tokens`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`ssl-ciphers`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#ssl-ciphers) | [`ssl-ciphers`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls) |
-| [`ssl-dh-param`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#ssl-dh-param) | [`ssl-dhparam-file`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls) |
-| [`ssl-protocols`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#ssl-protocols) | [`ssl-protocols`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls) |
-| [`ssl-redirect`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#ssl-redirect) | [`ssl-redirect`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls) |
-| [`upstream-keepalive-connections`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#upstream-keepalive-connections) | [`keepalive`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#backend-services-upstreams) |
-| [`use-http2`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#use-http2) | [`http2`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#listeners) |
-| [`use-proxy-protocol`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#use-proxy-protocol) | [`proxy-protocol`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#listeners) |
-| [`variables-hash-bucket-size`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#variables-hash-bucket-size)     | [`variables-hash-bucket-size`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`worker-cpu-affinity`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#worker-cpu-affinity) | [`worker-cpu-affinity`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`worker-processes`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#worker-processes) | [`worker-processes`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
-| [`worker-shutdown-timeout`](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#worker-shutdown-timeout) | [`worker-shutdown-timeole`](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_disable-access-log_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#disable-access-log) | [_access-log-off_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#logging) |
+| [_error-log-level_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#error-log-level) | [_error-log-level_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#logging) |
+| [_hsts_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#hsts) | [_hsts_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls) |
+| [_hsts-include-subdomains_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#hsts-include-subdomains) | [_hsts-include-subdomains_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls)       |
+| [_hsts-max-age_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#hsts-max-age) | [_hsts-max-age_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls) |
+| [_http-snippet_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#http-snippet) | [_http-snippets_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#snippets-and-custom-templates) |
+| [_keep-alive_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#keep-alive) | [_keepalive-timeout_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_keep-alive-requests_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#keep-alive-requests) | [_keepalive-requests_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_load-balance_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#load-balance) | [_lb-method_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#backend-services-upstreams) |
+| [_location-snippet_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#location-snippet) | [_location-snippets_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#snippets-and-custom-templates) |
+| [_log-format-escape-json_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#log-format-escape-json) | [_log-format-escaping: "json"_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#logging) |
+| [_log-format-stream_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#log-format-stream) | [_stream-log-format_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#logging) |
+| [_log-format-upstream_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#log-format-upstream) | [_log-format_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#logging) |
+| [_main-snippet_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#main-snippet) | [_main-snippets_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#snippets-and-custom-templates) |
+| [_max-worker-connections_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#max-worker-connections) | [_worker-connections_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_max-worker-open-files_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#max-worker-open-files) | [_worker-rlimit-nofile_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_proxy-body-size_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-body-size) | [_client-max-body-size_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_proxy-buffering_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-buffering) | [_proxy-buffering_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_proxy-buffers-number_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-buffers-number) | [_proxy-buffers: number size_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_proxy-buffer-size_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-buffer-size) | [_proxy-buffers: number size_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_proxy-connect-timeout_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-connect-timeout) | [_proxy-connect-timeout_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_proxy-read-timeout_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-read-timeout) | [_proxy-read-timeout_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_proxy-send-timeout_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-send-timeout) | [_proxy-send-timeout_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_server-name-hash-bucket-size_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#server-name-hash-bucket-size) | [_server-names-hash-bucket-size_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_proxy-headers-hash-max-size_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#proxy-headers-hash-max-size) | [_server-names-hash-max-size_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_server-snippet_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#server-snippet) | [_server-snippets_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#snippets-and-custom-templates) |
+| [_server-tokens _](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#server-tokens) | [_server-tokens_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_ssl-ciphers_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#ssl-ciphers) | [_ssl-ciphers_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls) |
+| [_ssl-dh-param_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#ssl-dh-param) | [_ssl-dhparam-file_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls) |
+| [_ssl-protocols_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#ssl-protocols) | [_ssl-protocols_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls) |
+| [_ssl-redirect_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#ssl-redirect) | [_ssl-redirect_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#auth-and-ssltls) |
+| [_upstream-keepalive-connections_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#upstream-keepalive-connections) | [_keepalive_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#backend-services-upstreams) |
+| [_use-http2_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#use-http2) | [_http2_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#listeners) |
+| [_use-proxy-protocol_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#use-proxy-protocol) | [_proxy-protocol_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#listeners) |
+| [_variables-hash-bucket-size_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#variables-hash-bucket-size)     | [_variables-hash-bucket-size_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_worker-cpu-affinity_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#worker-cpu-affinity) | [_worker-cpu-affinity_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_worker-processes_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#worker-processes) | [_worker-processes_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
+| [_worker-shutdown-timeout_](https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#worker-shutdown-timeout) | [_worker-shutdown-timeole_](https://docs.nginx.com/nginx-ingress-controller/configuration/global-configuration/configmap-resource/#general-customization) |
 {{% /bootstrap-table %}}
