@@ -661,7 +661,7 @@ class TestOptionsSpecificForPlus:
     def test_slow_start_warning(
         self, kube_apis, ingress_controller_prerequisites, crd_ingress_controller, virtual_server_setup, options
     ):
-        wait_before_test(900)
+        wait_before_test(1100)
         ic_pod_name = get_first_pod_name(kube_apis.v1, ingress_controller_prerequisites.namespace)
         text = f"{virtual_server_setup.namespace}/{virtual_server_setup.vs_name}"
         vs_event_text = f"Configuration for {text} was added or updated ; with warning(s): Slow start will be disabled"
