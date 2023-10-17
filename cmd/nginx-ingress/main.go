@@ -90,6 +90,8 @@ func main() {
 
 	staticCfgParams := &configs.StaticConfigParams{
 		DisableIPV6:                    *disableIPV6,
+		DefaultHTTPListenerPort:        *defaultHTTPListenerPort,
+		DefaultHTTPSListenerPort:       *defaultHTTPSListenerPort,
 		HealthStatus:                   *healthStatus,
 		HealthStatusURI:                *healthStatusURI,
 		NginxStatus:                    *nginxStatus,
@@ -317,7 +319,7 @@ func createPlusClient(nginxPlus bool, useFakeNginxManager bool, nginxManager ngi
 
 	if nginxPlus && !useFakeNginxManager {
 		httpClient := getSocketClient("/var/lib/nginx/nginx-plus-api.sock")
-		plusClient, err = client.NewNginxClient(httpClient, "http://nginx-plus-api/api")
+		plusClient, err = client.NewNginxClient("http://nginx-plus-api/api", client.WithHTTPClient(httpClient))
 		if err != nil {
 			glog.Fatalf("Failed to create NginxClient for Plus: %v", err)
 		}

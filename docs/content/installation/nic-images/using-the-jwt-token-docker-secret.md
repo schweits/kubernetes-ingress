@@ -31,8 +31,8 @@ If you would like an NGINX Ingress Controller image using NGINX open source, we 
 
 You will need the following information from [MyF5](https://my.f5.com) for these steps:
 
-* A JWT Access Token (Per instance) for NGINX Ingress Controller from an active NGINX Ingress Controller subscription.
-* The certificate (`nginx-repo.crt`) and key (`nginx-repo.key`) for each NGINX Ingress Controller instance, used to list the available image tags from the Docker registry API.
+- A JWT Access Token (Per instance) for NGINX Ingress Controller from an active NGINX Ingress Controller subscription.
+- The certificate (`nginx-repo.crt`) and key (`nginx-repo.key`) for each NGINX Ingress Controller instance, used to list the available image tags from the Docker registry API.
 
 ---
 
@@ -80,7 +80,7 @@ spec:
     seccompProfile:
       type: RuntimeDefault
   containers:
-  - image: private-registry.nginx.com/nginx-ic/nginx-plus-ingress:3.2.0
+  - image: private-registry.nginx.com/nginx-ic/nginx-plus-ingress:3.3.0
     imagePullPolicy: IfNotPresent
     name: nginx-plus-ingress
 ```
@@ -120,7 +120,7 @@ image:
   repository: private-registry.nginx.com/nginx-ic/nginx-plus-ingress
 
   ## The version tag
-  tag: 3.2.0
+  tag: 3.3.0
 
   serviceAccount:
     ## The annotations of the service account of the Ingress Controller pods.
@@ -145,13 +145,12 @@ The above command will install NGINX Ingress Controller in the `nginx-ingress` n
 
 If the namespace does not exist, `--create-namespace` will create it. Using `-f values.yaml` tells `helm` to use the `values.yaml` file that you modified earlier with the settings you want to apply for your NGINX Ingress Controller deployment.
 
-
 ### Helm Chart
 
 If you want to install NGINX Ingress Controller using the charts method, the following is an example of using the command line to pass the required arguments using the `set` parameter.
 
 ```shell
-helm install my-release -n nginx-ingress oci://ghcr.io/nginxinc/charts/nginx-ingress --version 0.18.0 --set controller.image.repository=private-registry.nginx.com/nginx-ic/nginx-plus-ingress --set controller.image.tag=3.2.0 --set controller.nginxplus=true --set controller.serviceAccount.imagePullSecretName=regcred
+helm install my-release -n nginx-ingress oci://ghcr.io/nginxinc/charts/nginx-ingress --version 1.0.0 --set controller.image.repository=private-registry.nginx.com/nginx-ic/nginx-plus-ingress --set controller.image.tag=3.3.0 --set controller.nginxplus=true --set controller.serviceAccount.imagePullSecretName=regcred
 ```
 
 Checking the validation that the .crts/key and .jwt are able to successfully authenticate to the repo to pull NGINX Ingress controller images:
@@ -164,27 +163,27 @@ You can also use the certificate and key from the MyF5 portal and the Docker reg
    {
     "name": "nginx-ic/nginx-plus-ingress",
     "tags": [
-        "3.2.1-alpine",
-        "3.2.1-ubi",
-        "3.2.1"
+        "3.3.0-alpine",
+        "3.3.0-ubi",
+        "3.3.0"
     ]
     }
 
-   $ curl <https://private-registry.nginx.com/v2/nginx-ic-nap/nginx-plus-ingress/tags/list> --key <path-to-client.key> --cert <path-to-client.cert> | jq
+   $ curl https://private-registry.nginx.com/v2/nginx-ic-nap/nginx-plus-ingress/tags/list --key <path-to-client.key> --cert <path-to-client.cert> | jq
    {
     "name": "nginx-ic-nap/nginx-plus-ingress",
     "tags": [
-        "3.2.1-ubi",
-        "3.2.1"
+        "3.3.0-ubi",
+        "3.3.0"
     ]
     }
 
-   $ curl <https://private-registry.nginx.com/v2/nginx-ic-dos/nginx-plus-ingress/tags/list> --key <path-to-client.key> --cert <path-to-client.cert> | jq
+   $ curl https://private-registry.nginx.com/v2/nginx-ic-dos/nginx-plus-ingress/tags/list --key <path-to-client.key> --cert <path-to-client.cert> | jq
    {
     "name": "nginx-ic-dos/nginx-plus-ingress",
     "tags": [
-        "3.2.1-ubi",
-        "3.2.1"
+        "3.3.0-ubi",
+        "3.3.0"
     ]
     }
 ```
