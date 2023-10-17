@@ -100,6 +100,8 @@ type Upstream struct {
 	MaxConns            *int         `json:"maxConns"`
 	HealthCheck         *HealthCheck `json:"healthCheck"`
 	LoadBalancingMethod string       `json:"loadBalancingMethod"`
+	Backup              string       `json:"backup"`
+	BackupPort          uint16       `json:"backupPort"`
 }
 
 // HealthCheck defines the parameters for active Upstream HealthChecks.

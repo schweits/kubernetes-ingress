@@ -157,9 +157,36 @@ func validateTransportServerUpstreams(upstreams []v1alpha1.Upstream, fieldPath *
 		allErrs = append(allErrs, validateTSUpstreamHealthChecks(u.HealthCheck, idxPath.Child("healthChecks"))...)
 
 		allErrs = append(allErrs, validateLoadBalancingMethod(u.LoadBalancingMethod, idxPath.Child("loadBalancingMethod"), isPlus)...)
+		allErrs = append(allErrs, validateTSUpstreamBackup(u, idxPath)...)
 	}
 
 	return allErrs, upstreamNames
+}
+
+// validateTSUpstreamBackup checks if the backup settings are valid.
+//
+// [ref:] https://nginx.org/en/docs/stream/ngx_stream_upstream_module.html#server
+func validateTSUpstreamBackup(u v1alpha1.Upstream, fp *field.Path) field.ErrorList {
+	if u.Backup == "" && u.BackupPort == 0 {
+		return field.ErrorList{}
+	}
+	// When 'Backup' is used both, 'backup' and 'backupPort' must be present.
+	if u.Backup != "" && u.BackupPort == 0 {
+		return field.ErrorList{field.Invalid(fp.Child("backupPort"), u.BackupPort, "'backupPort' not set when 'backup' is defined")}
+	}
+	if u.Backup == "" && u.BackupPort != 0 {
+		return field.ErrorList{field.Invalid(fp.Child("backup"), u.Backup, "'backup' not set when 'backupPort' is defined")}
+	}
+
+	allErrs := validateServiceName(u.Backup, fp.Child("backup"))
+	for _, msg := range validation.IsValidPortNum(int(u.BackupPort)) {
+		allErrs = append(allErrs, field.Invalid(fp.Child("backupPort"), u.BackupPort, msg))
+	}
+	// 'Backup' can't be used when load balancing methods 'hash' or 'random' are set.
+	if u.LoadBalancingMethod == "hash" || u.LoadBalancingMethod == "random" {
+		allErrs = append(allErrs, field.Forbidden(fp.Child("backup"), "'backup' not allowed for LB methods: 'hash' and 'random'"))
+	}
+	return allErrs
 }
 
 func validateLoadBalancingMethod(method string, fieldPath *field.Path, isPlus bool) field.ErrorList {

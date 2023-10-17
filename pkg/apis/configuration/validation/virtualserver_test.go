@@ -69,6 +69,131 @@ func TestValidateVirtualServer(t *testing.T) {
 	}
 }
 
+// baseVirtualServer returns a VirtualServer with all fields valid.
+var baseVirtualServer = func() v1.VirtualServer {
+	return v1.VirtualServer{
+		ObjectMeta: meta_v1.ObjectMeta{
+			Name:      "cafe",
+			Namespace: "default",
+		},
+		Spec: v1.VirtualServerSpec{
+			Host: "example.com",
+			TLS: &v1.TLS{
+				Secret: "abc",
+			},
+			ExternalDNS: v1.ExternalDNS{
+				Enable: false,
+			},
+			Upstreams: []v1.Upstream{
+				{
+					Name:      "first",
+					Service:   "service-1",
+					Port:      80,
+					MaxFails:  createPointerFromInt(8),
+					MaxConns:  createPointerFromInt(16),
+					Keepalive: createPointerFromInt(32),
+				},
+				{
+					Name:    "second",
+					Service: "service-2",
+					Port:    80,
+				},
+			},
+			Routes: []v1.Route{
+				{
+					Path: "/first",
+					Action: &v1.Action{
+						Pass: "first",
+					},
+				},
+				{
+					Path: "/second",
+					Action: &v1.Action{
+						Pass: "second",
+					},
+				},
+			},
+		},
+	}
+}
+
+func TestValidate_FailsOnMissingBackupName(t *testing.T) {
+	t.Parallel()
+
+	vs := baseVirtualServer()
+	vs.Spec.Upstreams[0].Backup = ""
+	vs.Spec.Upstreams[0].BackupPort = 9999
+
+	vsv := &VirtualServerValidator{isPlus: true, isDosEnabled: false}
+
+	err := vsv.ValidateVirtualServer(&vs)
+	if err == nil {
+		t.Error("want error on missing upstream backup")
+	}
+}
+
+func TestValidate_FailsOnMissingUpstreamBackupPort(t *testing.T) {
+	t.Parallel()
+
+	vs := baseVirtualServer()
+	vs.Spec.Upstreams[0].Backup = "upstream"
+	vs.Spec.Upstreams[0].BackupPort = 0
+
+	vsv := &VirtualServerValidator{isPlus: true, isDosEnabled: false}
+
+	err := vsv.ValidateVirtualServer(&vs)
+	if err == nil {
+		t.Error("want error on missing upstream backup")
+	}
+}
+
+func TestValidate_FailsOnInvalidLBMethodRandomWhenUpstreamBackupDefined(t *testing.T) {
+	t.Parallel()
+
+	vs := baseVirtualServer()
+	vs.Spec.Upstreams[0].Backup = "upstream"
+	vs.Spec.Upstreams[0].BackupPort = 9999
+	vs.Spec.Upstreams[0].LBMethod = "random"
+
+	vsv := &VirtualServerValidator{isPlus: true, isDosEnabled: false}
+
+	err := vsv.ValidateVirtualServer(&vs)
+	if err == nil {
+		t.Error("want error on 'random' load balancing method")
+	}
+}
+
+func TestValidate_FailsOnInvalidLBMethodHashWhenUpstreamBackupDefined(t *testing.T) {
+	t.Parallel()
+
+	vs := baseVirtualServer()
+	vs.Spec.Upstreams[0].Backup = "upstream"
+	vs.Spec.Upstreams[0].BackupPort = 9999
+	vs.Spec.Upstreams[0].LBMethod = "hash"
+
+	vsv := &VirtualServerValidator{isPlus: true, isDosEnabled: false}
+
+	err := vsv.ValidateVirtualServer(&vs)
+	if err == nil {
+		t.Error("want error on 'hash' load balancing method")
+	}
+}
+
+func TestValidate_FailsOnInvalidUpstreamBackupName(t *testing.T) {
+	t.Parallel()
+
+	vs := baseVirtualServer()
+	vs.Spec.Upstreams[0].Backup = "UPSTREAM-123"
+	vs.Spec.Upstreams[0].BackupPort = 9999
+
+	vsv := &VirtualServerValidator{isPlus: true, isDosEnabled: true}
+
+	err := vsv.ValidateVirtualServer(&vs)
+	if err == nil {
+		t.Error("want error on invalid 'backup' name")
+	}
+}
+
 func TestValidateHost(t *testing.T) {
 	t.Parallel()
 	validHosts := []string{

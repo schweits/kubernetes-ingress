@@ -42,6 +42,133 @@ func TestValidateTransportServer(t *testing.T) {
 	}
 }
 
+var testTransportServer = func() v1alpha1.TransportServer {
+	return v1alpha1.TransportServer{
+		Spec: v1alpha1.TransportServerSpec{
+			Listener: v1alpha1.TransportServerListener{
+				Name:     "tcp-listener",
+				Protocol: "TCP",
+			},
+			Upstreams: []v1alpha1.Upstream{
+				{
+					Name:    "upstream1",
+					Service: "test-1",
+					Port:    5501,
+				},
+			},
+			Action: &v1alpha1.Action{
+				Pass: "upstream1",
+			},
+		},
+	}
+}
+
+func TestValidate_UpstreamBackupOnValidInput(t *testing.T) {
+	t.Parallel()
+
+	ts := testTransportServer()
+	ts.Spec.Upstreams[0].Backup = "backup"
+	ts.Spec.Upstreams[0].BackupPort = 50000
+
+	tsv := createTransportServerValidator()
+
+	err := tsv.ValidateTransportServer(&ts)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestValidate_UpstreamBackupOnMissingName(t *testing.T) {
+	t.Parallel()
+
+	ts := testTransportServer()
+	ts.Spec.Upstreams[0].Backup = ""
+	ts.Spec.Upstreams[0].BackupPort = 50000
+
+	tsv := createTransportServerValidator()
+
+	err := tsv.ValidateTransportServer(&ts)
+	if err == nil {
+		t.Error("want error on missing backup name")
+	}
+}
+
+func TestValidate_UpstreamBackupOnMissingPort(t *testing.T) {
+	t.Parallel()
+
+	ts := testTransportServer()
+	ts.Spec.Upstreams[0].Backup = "backup"
+
+	tsv := createTransportServerValidator()
+
+	err := tsv.ValidateTransportServer(&ts)
+	if err == nil {
+		t.Error("want error on missing backup port")
+	}
+}
+
+func TestValidate_UpstreamBackupOnInvalidPort(t *testing.T) {
+	t.Parallel()
+
+	ts := testTransportServer()
+	ts.Spec.Upstreams[0].Backup = "backup"
+	ts.Spec.Upstreams[0].BackupPort = 0
+
+	tsv := createTransportServerValidator()
+
+	err := tsv.ValidateTransportServer(&ts)
+	if err == nil {
+		t.Error("want error on inalid backup port")
+	}
+}
+
+func TestValidate_UpstreamBackupOnInvalidLoadBalancingMethodHash(t *testing.T) {
+	t.Parallel()
+
+	ts := testTransportServer()
+	ts.Spec.Upstreams[0].Backup = "backup"
+	ts.Spec.Upstreams[0].BackupPort = 9999
+	ts.Spec.Upstreams[0].LoadBalancingMethod = "hash"
+
+	tsv := createTransportServerValidator()
+
+	err := tsv.ValidateTransportServer(&ts)
+	if err == nil {
+		t.Errorf("want error on invalid load balancing method %q", ts.Spec.Upstreams[0].LoadBalancingMethod)
+	}
+}
+
+func TestValidate_UpstreamBackupOnInvalidLoadBalancingMethodRandom(t *testing.T) {
+	t.Parallel()
+
+	ts := testTransportServer()
+	ts.Spec.Upstreams[0].Backup = "backup"
+	ts.Spec.Upstreams[0].BackupPort = 9999
+	ts.Spec.Upstreams[0].LoadBalancingMethod = "random"
+
+	tsv := createTransportServerValidator()
+
+	err := tsv.ValidateTransportServer(&ts)
+	if err == nil {
+		t.Errorf("want error on invalid load balancing method %q", ts.Spec.Upstreams[0].LoadBalancingMethod)
+	}
+}
+
+func TestValidate_UpstreamBackupOnOnInvalidBackupName(t *testing.T) {
+	t.Parallel()
+
+	ts := testTransportServer()
+	ts.Spec.Upstreams[0].Backup = "UPSTREAM-123"
+	ts.Spec.Upstreams[0].BackupPort = 9999
+
+	tsv := createTransportServerValidator()
+
+	err := tsv.ValidateTransportServer(&ts)
+	if err == nil {
+		t.Errorf("want error on invalid backup name %q", ts.Spec.Upstreams[0].Backup)
+	}
+}
+
 func TestValidateTransportServer_FailsOnInvalidInput(t *testing.T) {
 	t.Parallel()
 	ts := v1alpha1.TransportServer{

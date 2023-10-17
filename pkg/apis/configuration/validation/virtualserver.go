@@ -75,9 +75,7 @@ func (vsv *VirtualServerValidator) ValidateVirtualServer(virtualServer *v1.Virtu
 
 // validateVirtualServerSpec validates a VirtualServerSpec.
 func (vsv *VirtualServerValidator) validateVirtualServerSpec(spec *v1.VirtualServerSpec, fieldPath *field.Path, namespace string) field.ErrorList {
-	allErrs := field.ErrorList{}
-
-	allErrs = append(allErrs, validateHost(spec.Host, fieldPath.Child("host"))...)
+	allErrs := validateHost(spec.Host, fieldPath.Child("host"))
 	allErrs = append(allErrs, vsv.validateTLS(spec.TLS, fieldPath.Child("tls"))...)
 	allErrs = append(allErrs, validatePolicies(spec.Policies, fieldPath.Child("policies"), namespace)...)
 
@@ -592,11 +590,37 @@ func (vsv *VirtualServerValidator) validateUpstreams(upstreams []v1.Upstream, fi
 		for _, msg := range validation.IsValidPortNum(int(u.Port)) {
 			allErrs = append(allErrs, field.Invalid(idxPath.Child("port"), u.Port, msg))
 		}
-
 		allErrs = append(allErrs, rejectPlusResourcesInOSS(u, idxPath, vsv.isPlus)...)
+		allErrs = append(allErrs, validateVSUpstreamBackup(u, idxPath)...)
 	}
 
 	return allErrs, upstreamNames
+}
+
+// validateVSUpstreamBackup checks if the backup settings are valid.
+//
+// [ref:] https://nginx.org/en/docs/stream/ngx_stream_upstream_module.html#server
+func validateVSUpstreamBackup(u v1.Upstream, fp *field.Path) field.ErrorList {
+	if u.Backup == "" && u.BackupPort == 0 {
+		return field.ErrorList{}
+	}
+	// When 'Backup' is used both, 'backup' and 'backupPort' must be present.
+	if u.Backup != "" && u.BackupPort == 0 {
+		return field.ErrorList{field.Invalid(fp.Child("backupPort"), u.BackupPort, "'backupPort' not set when 'backup' is defined")}
+	}
+	if u.Backup == "" && u.BackupPort != 0 {
+		return field.ErrorList{field.Invalid(fp.Child("backup"), u.Backup, "'backup' not set when 'backupPort' is defined")}
+	}
+
+	allErrs := validateServiceName(u.Backup, fp.Child("backup"))
+	for _, msg := range validation.IsValidPortNum(int(u.BackupPort)) {
+		allErrs = append(allErrs, field.Invalid(fp.Child("backupPort"), u.BackupPort, msg))
+	}
+	// 'Backup' can't be used when load balancing methods 'hash' or 'random' are set.
+	if u.LBMethod == "hash" || u.LBMethod == "random" {
+		allErrs = append(allErrs, field.Forbidden(fp.Child("backup"), "'backup' not allowed for LB methods: 'hash' and 'random'"))
+	}
+	return allErrs
 }
 
 var validNextUpstreamParams = map[string]bool{
