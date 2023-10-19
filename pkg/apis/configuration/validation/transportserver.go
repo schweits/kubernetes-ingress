@@ -182,8 +182,8 @@ func validateTSUpstreamBackup(u v1alpha1.Upstream, fp *field.Path) field.ErrorLi
 	for _, msg := range validation.IsValidPortNum(int(u.BackupPort)) {
 		allErrs = append(allErrs, field.Invalid(fp.Child("backupPort"), u.BackupPort, msg))
 	}
-	// 'Backup' can't be used when load balancing methods 'hash' or 'random' are set.
-	if u.LoadBalancingMethod == "hash" || u.LoadBalancingMethod == "random" {
+	// 'Backup' can't be used when load balancing methods 'hash', 'ip_hash' or 'random' are set.
+	if u.LoadBalancingMethod == "hash" || u.LoadBalancingMethod == "ip_hash" || u.LoadBalancingMethod == "random" {
 		allErrs = append(allErrs, field.Forbidden(fp.Child("backup"), "'backup' not allowed for LB methods: 'hash' and 'random'"))
 	}
 	return allErrs

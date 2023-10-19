@@ -138,6 +138,22 @@ func TestValidate_UpstreamBackupOnInvalidLoadBalancingMethodHash(t *testing.T) {
 	}
 }
 
+func TestValidate_UpstreamBackupOnInvalidLoadBalancingMethodIPHash(t *testing.T) {
+	t.Parallel()
+
+	ts := testTransportServer()
+	ts.Spec.Upstreams[0].Backup = "backup"
+	ts.Spec.Upstreams[0].BackupPort = 9999
+	ts.Spec.Upstreams[0].LoadBalancingMethod = "ip_hash"
+
+	tsv := createTransportServerValidator()
+
+	err := tsv.ValidateTransportServer(&ts)
+	if err == nil {
+		t.Errorf("want error on invalid load balancing method %q", ts.Spec.Upstreams[0].LoadBalancingMethod)
+	}
+}
+
 func TestValidate_UpstreamBackupOnInvalidLoadBalancingMethodRandom(t *testing.T) {
 	t.Parallel()
 
