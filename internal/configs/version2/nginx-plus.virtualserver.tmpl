@@ -24,6 +24,8 @@ upstream {{ $u.Name }} {
     {{ end }}
 
     {{ if $u.NTLM }}ntlm;{{ end }}
+
+    {{- generateUpstreamBackup $u.Backup $u.BackupPort -}}
 }
 {{ end }}
 

@@ -179,6 +179,22 @@ func TestValidate_FailsOnInvalidLBMethodHashWhenUpstreamBackupDefined(t *testing
 	}
 }
 
+func TestValidate_FailsOnInvalidLBMethodIPHashWhenUpstreamBackupDefined(t *testing.T) {
+	t.Parallel()
+
+	vs := baseVirtualServer()
+	vs.Spec.Upstreams[0].Backup = "upstream"
+	vs.Spec.Upstreams[0].BackupPort = 9999
+	vs.Spec.Upstreams[0].LBMethod = "ip_hash"
+
+	vsv := &VirtualServerValidator{isPlus: true, isDosEnabled: false}
+
+	err := vsv.ValidateVirtualServer(&vs)
+	if err == nil {
+		t.Error("want error on 'ip_hash' load balancing method")
+	}
+}
+
 func TestValidate_FailsOnInvalidUpstreamBackupName(t *testing.T) {
 	t.Parallel()
 

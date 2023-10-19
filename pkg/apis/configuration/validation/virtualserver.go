@@ -617,8 +617,8 @@ func validateVSUpstreamBackup(u v1.Upstream, fp *field.Path) field.ErrorList {
 		allErrs = append(allErrs, field.Invalid(fp.Child("backupPort"), u.BackupPort, msg))
 	}
 	// 'Backup' can't be used when load balancing methods 'hash' or 'random' are set.
-	if u.LBMethod == "hash" || u.LBMethod == "random" {
-		allErrs = append(allErrs, field.Forbidden(fp.Child("backup"), "'backup' not allowed for LB methods: 'hash' and 'random'"))
+	if u.LBMethod == "hash" || u.LBMethod == "ip_hash" || u.LBMethod == "random" {
+		allErrs = append(allErrs, field.Forbidden(fp.Child("backup"), "'backup' not allowed for LB methods: 'hash', 'ip_hash' and 'random'"))
 	}
 	return allErrs
 }

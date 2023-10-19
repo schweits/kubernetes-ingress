@@ -12,6 +12,8 @@ upstream {{ $u.Name }} {
     {{ if $u.Keepalive }}
     keepalive {{ $u.Keepalive }};
     {{ end }}
+
+    {{- generateUpstreamBackup $u.Backup $u.BackupPort -}}
 }
 {{ end }}
 

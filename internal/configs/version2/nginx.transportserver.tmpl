@@ -10,6 +10,8 @@ upstream {{ $u.Name }} {
     {{ range $s := $u.Servers }}
     server {{ $s.Address }} max_fails={{ $s.MaxFails }} fail_timeout={{ $s.FailTimeout }} max_conns={{ $s.MaxConnections }};
     {{ end }}
+
+    {{- generateUpstreamBackup $u.Backup $u.BackupPort -}}
 }
 {{ end }}
 
