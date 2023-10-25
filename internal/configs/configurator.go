@@ -561,7 +561,29 @@ func (cnf *Configurator) addOrUpdateVirtualServer(virtualServerEx *VirtualServer
 	if (cnf.isPlus && cnf.isPrometheusEnabled) || cnf.isLatencyMetricsEnabled {
 		cnf.updateVirtualServerMetricsLabels(virtualServerEx, vsCfg.Upstreams)
 	}
+
+	err = cnf.addOrUpdateDefaultServers(vsc, &vsCfg)
+	if err != nil {
+		return warnings, err
+	}
 	return warnings, nil
+}
+
+func (cnf *Configurator) addOrUpdateDefaultServers(vsc *virtualServerConfigurator, vsCfg *version2.VirtualServerConfig) error {
+	cnf.updateDefaultServerPortMapsForVirtualServers(vsCfg)
+	vsDefaultServerCfg, _ := vsc.GenerateVirtualServerDefaultServerConfig(*vsCfg, defaultServerHTTPPortMap, defaultServerHTTPSPortMap)
+
+	content, err := cnf.templateExecutorV2.ExecuteVirtualServerDefaultServerTemplate(&vsDefaultServerCfg)
+	cnf.nginxManager.CreateConfig("default_servers.conf", content)
+	return err
+}
+
+var defaultServerHTTPPortMap = make(map[int]bool)
+var defaultServerHTTPSPortMap = make(map[int]bool)
+
+func (cnf *Configurator) updateDefaultServerPortMapsForVirtualServers(v *version2.VirtualServerConfig) {
+	defaultServerHTTPPortMap[v.Server.HTTPPort] = true
+	defaultServerHTTPSPortMap[v.Server.HTTPSPort] = true
 }
 
 // AddOrUpdateVirtualServers adds or updates NGINX configuration for multiple VirtualServer resources.

@@ -11,7 +11,7 @@ func createPointerFromInt(n int) *int {
 
 func newTmplExecutorNGINXPlus(t *testing.T) *TemplateExecutor {
 	t.Helper()
-	executor, err := NewTemplateExecutor("nginx-plus.virtualserver.tmpl", "nginx-plus.transportserver.tmpl")
+	executor, err := NewTemplateExecutor("nginx-plus.virtualserver.tmpl", "nginx-plus.transportserver.tmpl", "default-servers.tmpl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,11 +20,21 @@ func newTmplExecutorNGINXPlus(t *testing.T) *TemplateExecutor {
 
 func newTmplExecutorNGINX(t *testing.T) *TemplateExecutor {
 	t.Helper()
-	executor, err := NewTemplateExecutor("nginx.virtualserver.tmpl", "nginx.transportserver.tmpl")
+	executor, err := NewTemplateExecutor("nginx.virtualserver.tmpl", "nginx.transportserver.tmpl", "default-servers.tmpl")
 	if err != nil {
 		t.Fatal(err)
 	}
 	return executor
+}
+
+func TestVirtualServerDefaultServer(t *testing.T) {
+	t.Parallel()
+	executor := newTmplExecutorNGINX(t)
+	data, err := executor.ExecuteVirtualServerDefaultServerTemplate(&virtualServerDefaultServerCfg)
+	if err != nil {
+		t.Errorf("Failed to execute template: %v", err)
+	}
+	t.Log(string(data))
 }
 
 func TestVirtualServerForNginxPlus(t *testing.T) {
@@ -4133,6 +4143,18 @@ var (
 					},
 				},
 			},
+		},
+	}
+
+	virtualServerDefaultServerCfg = VirtualServerDefaultServerConfig{
+		VsConfig: virtualServerCfgWithCustomListener,
+		HTTPSPortMap: map[int]bool{
+			8443: true,
+			8445: true,
+		},
+		HTTPPortMap: map[int]bool{
+			8083: true,
+			80:   true,
 		},
 	}
 

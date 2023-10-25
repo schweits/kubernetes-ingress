@@ -358,7 +358,7 @@ func createTemplateExecutors() (*version1.TemplateExecutor, *version2.TemplateEx
 		glog.Fatalf("Error creating TemplateExecutor: %v", err)
 	}
 
-	templateExecutorV2, err := version2.NewTemplateExecutor(nginxVirtualServerTemplatePath, nginxTransportServerTemplatePath)
+	templateExecutorV2, err := version2.NewTemplateExecutor(nginxVirtualServerTemplatePath, nginxTransportServerTemplatePath, "default-servers.tmpl")
 	if err != nil {
 		glog.Fatalf("Error creating TemplateExecutorV2: %v", err)
 	}

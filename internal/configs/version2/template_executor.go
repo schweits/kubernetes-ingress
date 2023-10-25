@@ -18,10 +18,11 @@ type TemplateExecutor struct {
 	virtualServerTemplate       *template.Template
 	transportServerTemplate     *template.Template
 	tlsPassthroughHostsTemplate *template.Template
+	defaultServerTemplate       *template.Template
 }
 
 // NewTemplateExecutor creates a TemplateExecutor.
-func NewTemplateExecutor(virtualServerTemplatePath string, transportServerTemplatePath string) (*TemplateExecutor, error) {
+func NewTemplateExecutor(virtualServerTemplatePath string, transportServerTemplatePath string, vsDefaultServerTemplatePath string) (*TemplateExecutor, error) {
 	// template names  must be the base name of the template file https://golang.org/pkg/text/template/#Template.ParseFiles
 
 	vsTemplate, err := template.New(path.Base(virtualServerTemplatePath)).Funcs(helperFunctions).ParseFiles(virtualServerTemplatePath)
@@ -39,10 +40,13 @@ func NewTemplateExecutor(virtualServerTemplatePath string, transportServerTempla
 		return nil, err
 	}
 
+	vsDefaultServerTemplate, err := template.New(path.Base(vsDefaultServerTemplatePath)).Funcs(helperFunctions).ParseFiles(vsDefaultServerTemplatePath)
+
 	return &TemplateExecutor{
 		virtualServerTemplate:       vsTemplate,
 		transportServerTemplate:     tsTemplate,
 		tlsPassthroughHostsTemplate: tlsPassthroughHostsTemplate,
+		defaultServerTemplate:       vsDefaultServerTemplate,
 	}, nil
 }
 
@@ -78,6 +82,14 @@ func (te *TemplateExecutor) ExecuteTransportServerTemplate(cfg *TransportServerC
 func (te *TemplateExecutor) ExecuteTLSPassthroughHostsTemplate(cfg *TLSPassthroughHostsConfig) ([]byte, error) {
 	var configBuffer bytes.Buffer
 	err := te.tlsPassthroughHostsTemplate.Execute(&configBuffer, cfg)
+
+	return configBuffer.Bytes(), err
+}
+
+// ExecuteVirtualServerDefaultServerTemplate generates the content of an NGINX configuration file for a VirtualServer resource.
+func (te *TemplateExecutor) ExecuteVirtualServerDefaultServerTemplate(cfg *VirtualServerDefaultServerConfig) ([]byte, error) {
+	var configBuffer bytes.Buffer
+	err := te.defaultServerTemplate.Execute(&configBuffer, cfg)
 
 	return configBuffer.Bytes(), err
 }

@@ -23,6 +23,12 @@ type VirtualServerConfig struct {
 	Upstreams         []Upstream
 }
 
+type VirtualServerDefaultServerConfig struct {
+	VsConfig     VirtualServerConfig
+	HTTPPortMap  map[int]bool
+	HTTPSPortMap map[int]bool
+}
+
 // Upstream defines an upstream.
 type Upstream struct {
 	Name             string

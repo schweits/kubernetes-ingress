@@ -736,6 +736,21 @@ func (vsc *virtualServerConfigurator) GenerateVirtualServerConfig(
 	return vsCfg, vsc.warnings
 }
 
+func (vsc *virtualServerConfigurator) GenerateVirtualServerDefaultServerConfig(
+	vsConfig version2.VirtualServerConfig,
+	defaultServerHTTPPortMap map[int]bool,
+	defaultServerHTTPSPortMap map[int]bool,
+) (version2.VirtualServerDefaultServerConfig, Warnings) {
+
+	vsDefaultServerConfig := version2.VirtualServerDefaultServerConfig{
+		VsConfig:     vsConfig,
+		HTTPPortMap:  defaultServerHTTPPortMap,
+		HTTPSPortMap: defaultServerHTTPSPortMap,
+	}
+
+	return vsDefaultServerConfig, nil
+}
+
 type policiesCfg struct {
 	Allow           []string
 	Deny            []string
