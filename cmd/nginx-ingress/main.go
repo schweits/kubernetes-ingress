@@ -333,11 +333,13 @@ func createTemplateExecutors() (*version1.TemplateExecutor, *version2.TemplateEx
 	nginxIngressTemplatePath := "nginx.ingress.tmpl"
 	nginxVirtualServerTemplatePath := "nginx.virtualserver.tmpl"
 	nginxTransportServerTemplatePath := "nginx.transportserver.tmpl"
+	nginxVirtualServerDefaultServerTemplatePath := "nginx.defaultserver.tmpl"
 	if *nginxPlus {
 		nginxConfTemplatePath = "nginx-plus.tmpl"
 		nginxIngressTemplatePath = "nginx-plus.ingress.tmpl"
 		nginxVirtualServerTemplatePath = "nginx-plus.virtualserver.tmpl"
 		nginxTransportServerTemplatePath = "nginx-plus.transportserver.tmpl"
+		nginxVirtualServerDefaultServerTemplatePath = "nginx-plus.defaultserver.tmpl"
 	}
 
 	if *mainTemplatePath != "" {
@@ -358,7 +360,7 @@ func createTemplateExecutors() (*version1.TemplateExecutor, *version2.TemplateEx
 		glog.Fatalf("Error creating TemplateExecutor: %v", err)
 	}
 
-	templateExecutorV2, err := version2.NewTemplateExecutor(nginxVirtualServerTemplatePath, nginxTransportServerTemplatePath, "default-servers.tmpl")
+	templateExecutorV2, err := version2.NewTemplateExecutor(nginxVirtualServerTemplatePath, nginxTransportServerTemplatePath, nginxVirtualServerDefaultServerTemplatePath)
 	if err != nil {
 		glog.Fatalf("Error creating TemplateExecutorV2: %v", err)
 	}

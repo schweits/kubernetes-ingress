@@ -36,7 +36,7 @@ func createTestConfigurator(t *testing.T) *Configurator {
 		t.Fatal(err)
 	}
 
-	templateExecutorV2, err := version2.NewTemplateExecutor("version2/nginx-plus.virtualserver.tmpl", "version2/nginx-plus.transportserver.tmpl", "version2/default-servers.tmpl")
+	templateExecutorV2, err := version2.NewTemplateExecutor("version2/nginx-plus.virtualserver.tmpl", "version2/nginx-plus.transportserver.tmpl", "version2/nginx.defaultserver.tmpl")
 	if err != nil {
 		t.Fatal(err)
 	}

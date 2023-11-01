@@ -11,7 +11,7 @@ func createPointerFromInt(n int) *int {
 
 func newTmplExecutorNGINXPlus(t *testing.T) *TemplateExecutor {
 	t.Helper()
-	executor, err := NewTemplateExecutor("nginx-plus.virtualserver.tmpl", "nginx-plus.transportserver.tmpl", "default-servers.tmpl")
+	executor, err := NewTemplateExecutor("nginx-plus.virtualserver.tmpl", "nginx-plus.transportserver.tmpl", "nginx.defaultserver.tmpl")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +20,7 @@ func newTmplExecutorNGINXPlus(t *testing.T) *TemplateExecutor {
 
 func newTmplExecutorNGINX(t *testing.T) *TemplateExecutor {
 	t.Helper()
-	executor, err := NewTemplateExecutor("nginx.virtualserver.tmpl", "nginx.transportserver.tmpl", "default-servers.tmpl")
+	executor, err := NewTemplateExecutor("nginx.virtualserver.tmpl", "nginx.transportserver.tmpl", "nginx.defaultserver.tmpl")
 	if err != nil {
 		t.Fatal(err)
 	}

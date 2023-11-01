@@ -574,7 +574,7 @@ func (cnf *Configurator) addOrUpdateDefaultServers(vsc *virtualServerConfigurato
 	vsDefaultServerCfg, _ := vsc.GenerateVirtualServerDefaultServerConfig(*vsCfg, defaultServerHTTPPortMap, defaultServerHTTPSPortMap)
 
 	content, err := cnf.templateExecutorV2.ExecuteVirtualServerDefaultServerTemplate(&vsDefaultServerCfg)
-	cnf.nginxManager.CreateConfig("default_servers.conf", content)
+	cnf.nginxManager.CreateConfig("default_servers", content)
 	return err
 }
 
@@ -582,8 +582,13 @@ var defaultServerHTTPPortMap = make(map[int]bool)
 var defaultServerHTTPSPortMap = make(map[int]bool)
 
 func (cnf *Configurator) updateDefaultServerPortMapsForVirtualServers(v *version2.VirtualServerConfig) {
-	defaultServerHTTPPortMap[v.Server.HTTPPort] = true
-	defaultServerHTTPSPortMap[v.Server.HTTPSPort] = true
+	if v.Server.HTTPPort != 0 {
+		defaultServerHTTPPortMap[v.Server.HTTPPort] = true
+	}
+
+	if v.Server.HTTPSPort != 0 {
+		defaultServerHTTPSPortMap[v.Server.HTTPSPort] = true
+	}
 }
 
 // AddOrUpdateVirtualServers adds or updates NGINX configuration for multiple VirtualServer resources.
