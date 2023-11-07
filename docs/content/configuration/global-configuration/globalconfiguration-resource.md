@@ -11,8 +11,7 @@ docs: "DOCS-588"
 
 The GlobalConfiguration resource allows you to define the global configuration parameters of the Ingress Controller. The resource is implemented as a [Custom Resource](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/).
 
-The resource supports configuring listeners for TCP and UDP load balancing. Listeners are required by [TransportServer resources](/nginx-ingress-controller/configuration/transportserver-resource) and
-can be used to configure custom listerners for VirtualServers as specified [here](/nginx-ingress-controller/tutorials/virtual-server-with-custom-listener-ports).
+The resource supports configuring listeners for TCP and UDP load balancing. Listeners are required by [TransportServer resources](/nginx-ingress-controller/configuration/transportserver-resource).
 
 ## Prerequisites
 
@@ -23,7 +22,7 @@ When [installing](/nginx-ingress-controller/installation/installation-with-manif
 The GlobalConfiguration resource defines the global configuration parameters of the Ingress Controller. Below is an example:
 
 ```yaml
-apiVersion: k8s.nginx.org/v1
+apiVersion: k8s.nginx.org/v1alpha1
 kind: GlobalConfiguration
 metadata:
   name: nginx-configuration
@@ -36,13 +35,6 @@ spec:
   - name: dns-tcp
     port: 5353
     protocol: TCP
-  - name: http-8083
-    port: 8083
-    protocol: HTTP
-  - name: https-8443
-    port: 8443
-    protocol: HTTP
-    ssl: true
 ```
 
 {{% table %}}
@@ -53,15 +45,12 @@ spec:
 
 ### Listener
 
-The `listeners:` key defines a listener (a combination of a protocol and a port) that NGINX will use to accept traffic for a [TransportServer](/nginx-ingress-controller/configuration/transportserver-resource) and a [VirtualServer](nginx-ingress-controller/configuration/virtualserver-and-virtualserverroute-resources):
+The listener defines a listener (a combination of a protocol and a port) that NGINX will use to accept traffic for a [TransportServer](/nginx-ingress-controller/configuration/transportserver-resource):
 
 ```yaml
-- name: dns-tcp
-  port: 5353
-  protocol: TCP
-- name: http-8083
-  port: 8083
-  protocol: HTTP
+name: dns-tcp
+port: 5353
+protocol: TCP
 ```
 
 {{% table %}}
@@ -111,7 +100,7 @@ If you try to create (or update) a resource that violates the structural schema 
 
     ```
     $ kubectl apply -f global-configuration.yaml
-    error: error validating "global-configuration.yaml": error validating data: ValidationError(GlobalConfiguration.spec.listeners[0].port): invalid type for org.nginx.k8s.v1.GlobalConfiguration.spec.listeners.port: got "string", expected "integer"; if you choose to ignore these errors, turn validation off with --validate=false
+    error: error validating "global-configuration.yaml": error validating data: ValidationError(GlobalConfiguration.spec.listeners[0].port): invalid type for org.nginx.k8s.v1alpha1.GlobalConfiguration.spec.listeners.port: got "string", expected "integer"; if you choose to ignore these errors, turn validation off with --validate=false
     ```
 
 - Example of Kubernetes API server validation:
