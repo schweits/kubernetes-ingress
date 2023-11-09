@@ -19,8 +19,6 @@ authors: ["Jason Williams"]
 
 This page explains two different ways to migrate from the community-maintained [Ingress-NGINX Controller](https://github.com/kubernetes/ingress-nginx) project to NGINX Ingress Controller: using NGINX's Ingress Resources or with Kubernetes's built-in Ingress Resources. This is typically because of implementation differences, and to take advantage of features such as [NGINX Plus integration]({{<relref "overview/nginx-plus">}}).
 
-<!-- To understand the differences, you may wish to read [Which Ingress Controller Do I Need?]({{<relref "overview/controller-comparison">}}). -->
-
 The information in this guide is extracted from a free eBook called "_Kubernetes Ingress Controller Deployment and Security with NGINX_", which can be downloaded from the [NGINX Library](https://www.nginx.com/resources/library/kubernetes-ingress-controller-deployment-security-nginx/).
 
 ## Before you begin
