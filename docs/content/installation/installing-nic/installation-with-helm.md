@@ -309,7 +309,7 @@ The following tables lists the configurable parameters of the NGINX Ingress Cont
 | **controller.logLevel** | The log level of the Ingress Controller. | 1 |
 | **controller.image.digest** | The image digest of the Ingress Controller. | None |
 | **controller.image.repository** | The image repository of the Ingress Controller. | nginx/nginx-ingress |
-| **controller.image.tag** | The tag of the Ingress Controller image. | 3.2.1 |
+| **controller.image.tag** | The tag of the Ingress Controller image. | 3.3.2 |
 | **controller.image.pullPolicy** | The pull policy for the Ingress Controller image. | IfNotPresent |
 | **controller.lifecycle** | The lifecycle of the Ingress Controller pods. | {} |
 | **controller.customConfigMap** | The name of the custom ConfigMap used by the Ingress Controller. If set, then the default config is ignored. | "" |
