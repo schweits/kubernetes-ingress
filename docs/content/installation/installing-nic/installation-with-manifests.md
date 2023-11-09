@@ -36,7 +36,7 @@ git clone https://github.com/nginxinc/kubernetes-ingress.git --branch <version_n
 cd kubernetes-ingress/deployments
 ```
 
-For example, if you want to use version 3.2.1, the command would be `git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.2.1`.
+For example, if you want to use version 3.2.2, the command would be `git clone https://github.com/nginxinc/kubernetes-ingress.git --branch v3.2.2`.
 
 This guide assumes you are using the latest release.
 
