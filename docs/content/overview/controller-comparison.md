@@ -5,6 +5,7 @@ weight: 400
 doctypes: ["concept"]
 toc: true
 docs: "DOCS-610"
+draft: true
 ---
 
 There are two NGINX-based Ingress Controller implementations out there: the one made by NGINX ([nginxinc/kubernetes-ingress](https://github.com/nginxinc/kubernetes-ingress)) and the one made by Kubernetes ([kubernetes/ingress-nginx](https://github.com/kubernetes/ingress-nginx)). In this document, we explain the key differences between those implementations. This information should help you to choose an appropriate implementation for your requirements or move from one implementation to the other.
